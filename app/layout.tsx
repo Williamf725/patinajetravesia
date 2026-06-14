@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { Anton, Space_Grotesk, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
-import Background from "./components/Background";
+import Background from "@/components/Background";
 
 const anton = Anton({
   weight: "400",
