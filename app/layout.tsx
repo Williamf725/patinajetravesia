@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Anton, Space_Grotesk, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import Background from "@/components/Background";
+import Navbar from "@/components/Navbar";
 
 const anton = Anton({
   weight: "400",
@@ -36,7 +37,8 @@ export default function RootLayout({
     <html lang="es" className={`${anton.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable}`}>
       <body className="antialiased min-h-screen">
         <Background />
-        <main className="relative z-0">
+        <Navbar />
+        <main className="relative z-0 pt-20">
           {children}
         </main>
       </body>
