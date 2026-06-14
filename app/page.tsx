@@ -1,7 +1,6 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import Image from 'next/image';
 
 export default function Home() {
   return (
@@ -64,7 +63,7 @@ export default function Home() {
 
       {/* Bottom Label (Small Details for "Expensive" feel) */}
       <div className="absolute bottom-8 left-1/2 -translate-x-1/2 md:left-20 md:translate-x-0 font-mono text-[10px] md:text-xs text-neon-green tracking-[0.3em] uppercase opacity-60">
-        // Bogota, Colombia — Est. 2024 // Urban Skating Culture
+        {/* // Bogota, Colombia — Est. 2024 // Urban Skating Culture */}
       </div>
 
     </div>

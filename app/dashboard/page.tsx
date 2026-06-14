@@ -30,13 +30,13 @@ export default async function DashboardPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-8 font-mono">
           <div className="bg-black/50 p-6 border-2 border-white/10">
-            <p className="text-neon-green text-xs uppercase mb-2">// Perfil de Usuario</p>
+            <p className="text-neon-green text-xs uppercase mb-2">{/* // Perfil de Usuario */}</p>
             <p className="text-white text-xl">{user.email}</p>
             <p className="text-white/50 text-xs mt-2 uppercase">ID: {user.id}</p>
           </div>
 
           <div className="bg-black/50 p-6 border-2 border-white/10">
-            <p className="text-neon-green text-xs uppercase mb-2">// Estado de Membresía</p>
+            <p className="text-neon-green text-xs uppercase mb-2">{/* // Estado de Membresía */}</p>
             <p className="text-white text-xl">ACTIVO — NIVEL URBANO</p>
             <p className="text-white/50 text-xs mt-2 uppercase">Expira: 31-12-2024</p>
           </div>
