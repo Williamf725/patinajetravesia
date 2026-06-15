@@ -15,13 +15,24 @@ export async function login(formData: FormData) {
     return redirect('/login?message=Email and password are required')
   }
 
-  const { error } = await supabase.auth.signInWithPassword({
+  const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   })
 
   if (error) {
     return redirect(`/login?message=${encodeURIComponent(error.message)}`)
+  }
+
+  // Log the login event
+  if (data.user) {
+    const userAgent = (await headers()).get('user-agent')
+
+    await supabase.from('login_logs').insert({
+      user_id: data.user.id,
+      email: data.user.email,
+      user_agent: userAgent,
+    })
   }
 
   revalidatePath('/', 'layout')
