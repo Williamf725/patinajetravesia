@@ -15,9 +15,9 @@
   --color-hot-pink: var(--hot-pink);
   --color-neon-orange: var(--neon-orange);
 
-  --font-anton: "Anton", sans-serif;
-  --font-space: "Space Grotesk", sans-serif;
-  --font-mono: "JetBrains Mono", monospace;
+  --font-anton: var(--font-anton), "Anton", sans-serif;
+  --font-space: var(--font-space), "Space Grotesk", sans-serif;
+  --font-mono: var(--font-mono), "JetBrains Mono", monospace;
 }
 
 body {
