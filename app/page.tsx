@@ -13,7 +13,7 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
         >
-          <h1 className="font-anton text-5xl md:text-[8.1rem] leading-[0.9] text-white uppercase tracking-tight drop-shadow-[4px_4px_0px_rgba(0,0,0,0.5)]">
+          <h1 className="font-anton text-5xl md:text-[7.3rem] leading-[0.9] text-white uppercase tracking-tight drop-shadow-[4px_4px_0px_rgba(0,0,0,0.5)]">
             Club de Patinaje<br />
             <span className="text-white">Travesía</span>
           </h1>
@@ -24,7 +24,7 @@ export default function Home() {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, delay: 0.6 }}
         >
-          <button className="btn-tape text-lg md:text-2xl mt-2">
+          <button className="btn-tape text-base md:text-xl mt-2 px-6 py-2.5">
             ÚNETE AL PARCHE
           </button>
         </motion.div>
