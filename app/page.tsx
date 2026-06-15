@@ -13,7 +13,7 @@ export default function Home() {
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.8, delay: 0.2 }}
         >
-          <h1 className="font-anton text-5xl md:text-[9rem] leading-[0.9] text-white uppercase tracking-tight drop-shadow-[4px_4px_0px_rgba(0,0,0,0.5)]">
+          <h1 className="font-anton text-5xl md:text-[8.1rem] leading-[0.9] text-white uppercase tracking-tight drop-shadow-[4px_4px_0px_rgba(0,0,0,0.5)]">
             Club de Patinaje<br />
             <span className="text-white">Travesía</span>
           </h1>

@@ -59,6 +59,7 @@ body {
 .btn-tape:hover {
   transform: scale(1.05) rotate(-1deg);
   box-shadow: 6px 6px 0px 0px rgba(0, 0, 0, 1);
+  filter: brightness(1.2) drop-shadow(0 0 5px currentColor);
 }
 
 .btn-tape:active {
@@ -80,6 +81,19 @@ body {
   box-shadow: 8px 8px 0px 0px rgba(0, 0, 0, 1);
 }
 
+/* Neon Glow Effects */
+.neon-glow-orange {
+  text-shadow: 0 0 5px var(--neon-orange), 0 0 10px rgba(255, 95, 31, 0.5);
+}
+
+.neon-glow-green {
+  text-shadow: 0 0 5px var(--neon-green), 0 0 10px rgba(184, 211, 0, 0.5);
+}
+
+.neon-glow-pink {
+  text-shadow: 0 0 5px var(--hot-pink), 0 0 10px rgba(255, 177, 196, 0.5);
+}
+
 /* Navigation Links */
 .nav-link {
   font-family: var(--font-mono);
@@ -88,6 +102,7 @@ body {
   color: var(--neon-orange);
   transition: all 0.2s ease;
   position: relative;
+  text-shadow: 0 0 2px var(--neon-orange);
 }
 
 .nav-link::after {

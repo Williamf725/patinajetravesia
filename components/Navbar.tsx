@@ -18,7 +18,7 @@ export default function Navbar() {
       transition={{ duration: 0.5 }}
       className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 md:px-12 md:py-8"
     >
-      <div className="flex gap-6 md:gap-10">
+      <div className="flex gap-6 md:gap-10 border-b-2 border-white/80 pb-1">
         {navLinks.map((link) => (
           <Link
             key={link.name}
