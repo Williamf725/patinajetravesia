@@ -5,6 +5,7 @@
   --foreground: #ffffff;
   --neon-green: #b8d300;
   --hot-pink: #ffb1c4;
+  --neon-orange: #ff5f1f;
 }
 
 @theme inline {
@@ -12,6 +13,7 @@
   --color-foreground: var(--foreground);
   --color-neon-green: var(--neon-green);
   --color-hot-pink: var(--hot-pink);
+  --color-neon-orange: var(--neon-orange);
 
   --font-anton: "Anton", sans-serif;
   --font-space: "Space Grotesk", sans-serif;
@@ -83,7 +85,7 @@ body {
   font-family: var(--font-mono);
   font-weight: 700;
   text-transform: uppercase;
-  color: var(--neon-green);
+  color: var(--neon-orange);
   transition: all 0.2s ease;
   position: relative;
 }
@@ -95,7 +97,7 @@ body {
   height: 2px;
   bottom: -2px;
   left: 0;
-  background-color: var(--neon-green);
+  background-color: var(--neon-orange);
   transition: width 0.2s ease;
 }
 
@@ -104,5 +106,5 @@ body {
 }
 
 .nav-link-active {
-  border-bottom: 2px solid var(--neon-green);
+  border-bottom: 2px solid var(--neon-orange);
 }

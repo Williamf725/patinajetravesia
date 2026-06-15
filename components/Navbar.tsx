@@ -31,7 +31,7 @@ export default function Navbar() {
       </div>
 
       <div>
-        <button className="btn-tape bg-[#ffb100] text-black border-black text-xs md:text-sm px-4 py-2">
+        <button className="btn-tape !bg-neon-orange text-black border-black text-xs md:text-sm px-4 py-2">
           ÚNETE AL CLUB
         </button>
       </div>
