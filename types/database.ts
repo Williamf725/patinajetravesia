@@ -20,6 +20,8 @@ export type Pago = {
   anio: number;
   clases_tomadas: number;
   valor_por_clase: number;
+  pago_mensual: number;
+  pagado: boolean;
   abonos: Abono[];
   observaciones: string;
   created_at: string;

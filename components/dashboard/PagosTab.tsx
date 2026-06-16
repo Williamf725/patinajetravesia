@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import * as XLSX from 'xlsx';
-import { Plus, Save, Download } from 'lucide-react';
+import { Plus, Save, Download, Check, X } from 'lucide-react';
 import { Alumno, Pago, Abono } from '@/types/database';
 
 const MESES = [
@@ -41,7 +41,7 @@ export default function PagosTab() {
     fetchData();
   }, [fetchData]);
 
-  const updatePago = (alumnoId: string, field: string, value: string | number | Abono[]) => {
+  const updatePago = (alumnoId: string, field: string, value: string | number | boolean | Abono[]) => {
     setPagos(prev => {
       const exists = prev.find(p => p.alumno_id === alumnoId);
       if (exists) {
@@ -54,6 +54,8 @@ export default function PagosTab() {
           anio: filtroAnio,
           clases_tomadas: 0,
           valor_por_clase: 0,
+          pago_mensual: 0,
+          pagado: false,
           abonos: [],
           observaciones: '',
           created_at: '',
@@ -81,12 +83,14 @@ export default function PagosTab() {
   const handleSave = async () => {
     setIsSaving(true);
     const { error } = await supabase.from('pagos').upsert(
-      pagos.map(({ alumno_id, mes, anio, clases_tomadas, valor_por_clase, abonos, observaciones }) => ({
+      pagos.map(({ alumno_id, mes, anio, clases_tomadas, valor_por_clase, pago_mensual, pagado, abonos, observaciones }) => ({
         alumno_id,
         mes,
         anio,
         clases_tomadas,
         valor_por_clase,
+        pago_mensual,
+        pagado,
         abonos,
         observaciones
       })),
@@ -100,23 +104,16 @@ export default function PagosTab() {
 
   const calculateRow = (pago: Pago | undefined) => {
     const subtotal = (pago?.clases_tomadas || 0) * (pago?.valor_por_clase || 0);
+    const mensual = pago?.pago_mensual || 0;
+    const granTotal = subtotal + mensual;
+
     const totalAbonado = (pago?.abonos || []).reduce((acc: number, cur: Abono) => acc + cur.monto, 0);
-    const saldo = subtotal - totalAbonado;
+    const saldo = granTotal - totalAbonado;
 
-    let estado = 'Pendiente';
-    let color = 'bg-hot-pink/20 text-hot-pink';
+    const estado = pago?.pagado ? 'Pagado' : (totalAbonado > 0 ? 'Abono' : 'Pendiente');
+    const color = pago?.pagado ? 'bg-neon-green/20 text-neon-green' : (totalAbonado > 0 ? 'bg-yellow-500/20 text-yellow-500' : 'bg-hot-pink/20 text-hot-pink');
 
-    if (subtotal > 0) {
-      if (saldo <= 0) {
-        estado = 'Pagado';
-        color = 'bg-neon-green/20 text-neon-green';
-      } else if (totalAbonado > 0) {
-        estado = 'Abono';
-        color = 'bg-yellow-500/20 text-yellow-500';
-      }
-    }
-
-    return { subtotal, totalAbonado, saldo, estado, color };
+    return { subtotal, mensual, granTotal, totalAbonado, saldo, estado, color };
   };
 
   const filteredAlumnos = alumnos.filter(a => {
@@ -200,17 +197,19 @@ export default function PagosTab() {
               <th className="p-3 text-center">Clases</th>
               <th className="p-3 text-center">Valor Cl.</th>
               <th className="p-3 text-center">Subtotal</th>
+              <th className="p-3 text-center">Pago Mens.</th>
+              <th className="p-3 text-center">Gran Total</th>
               <th className="p-3 text-center">Abonos</th>
               <th className="p-3 text-center">Total Ab.</th>
               <th className="p-3 text-center">Saldo</th>
-              <th className="p-3 text-center">Estado</th>
+              <th className="p-3 text-center">¿PAGÓ?</th>
               <th className="p-3 text-left">Obs</th>
             </tr>
           </thead>
           <tbody>
             {filteredAlumnos.map((alumno) => {
               const p = pagos.find(p => p.alumno_id === alumno.id);
-              const { subtotal, totalAbonado, saldo, estado, color } = calculateRow(p);
+              const { subtotal, granTotal, totalAbonado, saldo } = calculateRow(p);
 
               return (
                 <tr key={alumno.id} className="border-b border-white/10 hover:bg-white/5 transition-all">
@@ -235,6 +234,25 @@ export default function PagosTab() {
                     />
                   </td>
                   <td className="p-3 text-center font-bold">${subtotal.toLocaleString()}</td>
+                  <td className="p-3">
+                    <input
+                      type="number"
+                      value={p?.pago_mensual || 0}
+                      onChange={e => updatePago(alumno.id, 'pago_mensual', Number(e.target.value))}
+                      className="w-24 bg-white/5 border border-white/10 p-1 text-center outline-none focus:border-neon-green"
+                    />
+                  </td>
+                  <td className="p-3 text-center font-black bg-white/5 cursor-pointer hover:bg-white/10 transition-colors"
+                      onClick={() => {
+                        const confirmMsg = p?.pagado ? '¿Marcar como NO pagado?' : '¿Marcar como PAGADO TOTAL?';
+                        if (confirm(confirmMsg)) {
+                          updatePago(alumno.id, 'pagado', !p?.pagado);
+                        }
+                      }}>
+                    <span className={p?.pagado ? 'text-neon-green' : 'text-white'}>
+                      ${granTotal.toLocaleString()}
+                    </span>
+                  </td>
                   <td className="p-3 text-center">
                     <button onClick={() => addAbono(alumno.id)} className="p-1 hover:text-neon-green transition-colors">
                       <Plus size={16} />
@@ -245,9 +263,12 @@ export default function PagosTab() {
                     ${saldo.toLocaleString()}
                   </td>
                   <td className="p-3 text-center">
-                    <span className={`px-2 py-1 rounded text-[9px] font-bold uppercase ${color}`}>
-                      {estado}
-                    </span>
+                    <button
+                      onClick={() => updatePago(alumno.id, 'pagado', !p?.pagado)}
+                      className={`w-8 h-8 mx-auto flex items-center justify-center rounded border-2 transition-all ${p?.pagado ? 'bg-neon-green border-neon-green text-black' : 'border-white/20 text-white/20 hover:border-white'}`}
+                    >
+                      {p?.pagado ? <Check size={16} strokeWidth={4} /> : <X size={16} />}
+                    </button>
                   </td>
                   <td className="p-3 min-w-[200px]">
                     <textarea

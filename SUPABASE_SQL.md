@@ -31,6 +31,8 @@ CREATE TABLE IF NOT EXISTS public.pagos (
     anio INTEGER NOT NULL,
     clases_tomadas INTEGER DEFAULT 0,
     valor_por_clase NUMERIC DEFAULT 0,
+    pago_mensual NUMERIC DEFAULT 0,
+    pagado BOOLEAN DEFAULT false,
     abonos JSONB DEFAULT '[]'::jsonb, -- Array de objetos: { monto: number, fecha: string }
     observaciones TEXT,
     created_at TIMESTAMPTZ DEFAULT now(),

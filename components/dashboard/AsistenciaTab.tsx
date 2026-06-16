@@ -13,7 +13,7 @@ import {
 } from 'date-fns';
 import { es } from 'date-fns/locale';
 import * as XLSX from 'xlsx';
-import { Plus, Save, Download } from 'lucide-react';
+import { Plus, Save, Download, Trash2 } from 'lucide-react';
 import { Alumno, Asistencia } from '@/types/database';
 
 const DIAS_CLASE = {
@@ -120,6 +120,17 @@ export default function AsistenciaTab() {
     }
   };
 
+  const handleDeleteAlumno = async (id: string, nombre: string) => {
+    if (confirm(`¿Estás seguro de que deseas eliminar a ${nombre}? Esta acción no se puede deshacer.`)) {
+      const { error } = await supabase.from('alumnos').delete().eq('id', id);
+      if (error) {
+        alert('Error al eliminar: ' + error.message);
+      } else {
+        fetchData();
+      }
+    }
+  };
+
   const exportToExcel = () => {
     const data = alumnos.map(a => {
       const row: Record<string, string | number> = {
@@ -193,6 +204,7 @@ export default function AsistenciaTab() {
             <tr className="border-b-2 border-white">
               <th className="p-3 text-left border-r border-white/20 w-16">Nº</th>
               <th className="p-3 text-left border-r border-white/20 min-w-[200px]">NOMBRE COMPLETO</th>
+              <th className="p-3 text-center border-r border-white/20 w-12">ACCIONES</th>
               {fechasMes.map((fecha, i) => (
                 <th key={i} className="p-2 text-center border-r border-white/20 min-w-[70px]">
                   <span className="text-[10px] text-white/40 block">
@@ -208,6 +220,15 @@ export default function AsistenciaTab() {
               <tr key={alumno.id} className="border-b border-white/10 hover:bg-white/5 transition-colors">
                 <td className="p-3 border-r border-white/20">{alumno.numero_alumno}</td>
                 <td className="p-3 border-r border-white/20 font-bold uppercase">{alumno.nombre_completo}</td>
+                <td className="p-3 border-r border-white/20 text-center">
+                  <button
+                    onClick={() => handleDeleteAlumno(alumno.id, alumno.nombre_completo)}
+                    className="text-white/20 hover:text-hot-pink transition-colors"
+                    title="Eliminar Alumno"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </td>
                 {fechasMes.map((fecha, i) => {
                   const fechaStr = format(fecha, 'yyyy-MM-dd');
                   const isPresent = asistencia.find(a => a.alumno_id === alumno.id && a.fecha === fechaStr)?.presente;
@@ -227,7 +248,7 @@ export default function AsistenciaTab() {
           </tbody>
           <tfoot className="sticky bottom-0 bg-[#131313] font-bold border-t-2 border-white">
              <tr>
-               <td colSpan={2} className="p-3 text-right pr-6 uppercase tracking-widest text-white/40">Total Presentes:</td>
+               <td colSpan={3} className="p-3 text-right pr-6 uppercase tracking-widest text-white/40">Total Presentes:</td>
                {fechasMes.map((fecha, i) => {
                  const fechaStr = format(fecha, 'yyyy-MM-dd');
                  const total = asistencia.filter(a => a.fecha === fechaStr && a.presente).length;

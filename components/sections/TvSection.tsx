@@ -1,16 +1,15 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, useInView } from 'framer-motion';
 import Image from 'next/image';
-import { ChevronLeft, ChevronRight, Volume2, VolumeX, Volume1 } from 'lucide-react';
+import { Volume2, VolumeX, Volume1 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { Galeria } from '@/types/database';
 
 type Mode = 'video' | 'gallery';
 
 export default function TvSection() {
-  const [isOn, setIsOn] = useState(false);
   const [mode, setMode] = useState<Mode>('video');
   const [isChangingChannel, setIsChangingChannel] = useState(false);
   const [volume, setVolume] = useState(50);
@@ -20,6 +19,8 @@ export default function TvSection() {
   const [images, setImages] = useState<Galeria[]>([]);
 
   const videoRef = useRef<HTMLVideoElement>(null);
+  const sectionRef = useRef<HTMLElement>(null);
+  const isInView = useInView(sectionRef, { amount: 0.3 });
   const volumeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const supabase = createClient();
 
@@ -47,22 +48,16 @@ export default function TvSection() {
     fetchContent();
   }, [supabase]);
 
-  // Intersection Observer for power on
+  // Handle video playback based on visibility
   useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting && !isOn) {
-          setIsOn(true);
-        }
-      },
-      { threshold: 0.5 }
-    );
-
-    const el = document.getElementById('tv-section');
-    if (el) observer.observe(el);
-
-    return () => observer.disconnect();
-  }, [isOn]);
+    if (videoRef.current) {
+      if (isInView && mode === 'video') {
+        videoRef.current.play().catch(e => console.error("Auto-play blocked:", e));
+      } else {
+        videoRef.current.pause();
+      }
+    }
+  }, [isInView, mode]);
 
   const handleChannelChange = () => {
     setIsChangingChannel(true);
@@ -87,54 +82,43 @@ export default function TvSection() {
   };
 
   return (
-    <section id="galeria" className="min-height-screen py-24 flex items-center justify-center bg-black/40 relative overflow-hidden">
+    <section
+      id="galeria"
+      ref={sectionRef}
+      className="min-h-screen py-10 md:py-20 flex items-center justify-center bg-black/40 relative overflow-hidden"
+    >
       {/* Background Decor (Brutalist) */}
-      <div className="absolute top-0 left-0 w-full h-full pointer-events-none opacity-20">
+      <div className="absolute top-0 left-0 w-full h-full pointer-events-none opacity-10">
         <div className="absolute top-10 left-10 text-[15vw] font-anton text-white leading-none select-none uppercase">REPLAY</div>
         <div className="absolute bottom-10 right-10 text-[10vw] font-anton text-neon-green leading-none select-none uppercase">TRAVESIA</div>
       </div>
 
-      <div className="container max-w-6xl px-4 flex flex-col lg:flex-row items-center gap-12 relative z-10">
+      <div className="w-[80%] h-[80vh] flex flex-col lg:flex-row items-center gap-8 relative z-10">
 
-        {/* TV UNIT */}
-        <div className="flex-1 w-full relative">
-          <div className="tv-container aspect-video w-full p-8 lg:p-12 tv-texture flex items-center justify-center">
+        {/* TV UNIT - Expanded to occupy 70% of the container */}
+        <div className="flex-[7] w-full h-full relative">
+          <div className="tv-container w-full h-full p-4 md:p-8 tv-texture flex items-center justify-center rounded-[20px] md:rounded-[40px]">
             {/* Decorative Stains */}
             <div className="tv-stain w-32 h-32 top-4 left-4" />
             <div className="tv-stain w-24 h-24 bottom-10 right-20" />
 
-            {/* SCREEN AREA */}
-            <div className="relative w-full h-full crt-screen">
+            {/* SCREEN AREA - Quality Improved */}
+            <div className="relative w-full h-full overflow-hidden rounded-lg bg-black">
 
-              {/* Startup Animation / Power State */}
-              <AnimatePresence>
-                {!isOn && (
+              {/* Startup Animation */}
+              <AnimatePresence mode="wait">
+                {isChangingChannel && (
                   <motion.div
+                    key="static"
                     initial={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="absolute inset-0 bg-black z-50 flex items-center justify-center"
-                  >
-                    <motion.div
-                      initial={{ scaleX: 0, scaleY: 0.01, backgroundColor: "#fff" }}
-                      exit={{
-                        scaleX: [0, 1, 1],
-                        scaleY: [0.01, 0.01, 1],
-                        opacity: [1, 1, 0],
-                        transition: { duration: 0.8, times: [0, 0.4, 1] }
-                      }}
-                      className="w-full h-full"
-                    />
-                  </motion.div>
+                    className="absolute inset-0 z-40 tv-static"
+                  />
                 )}
               </AnimatePresence>
 
-              {/* Static Noise Effect */}
-              {(isChangingChannel || !isOn) && (
-                <div className="absolute inset-0 z-40 tv-static" />
-              )}
-
-              {/* CONTENT */}
-              <div className="absolute inset-0 z-10 flex flex-col p-4 crt-curvature bg-[#1a1a1a] overflow-hidden grayscale-[0.2] sepia-[0.2] contrast-[1.1]">
+              {/* CONTENT - FULL COLOR & BEST QUALITY */}
+              <div className="absolute inset-0 z-10 flex flex-col p-0 bg-[#000] overflow-hidden">
 
                 {mode === 'video' ? (
                   <div className="flex-1 w-full h-full relative group">
@@ -142,34 +126,40 @@ export default function TvSection() {
                       <video
                         ref={videoRef}
                         src={videoUrl}
-                        className="w-full h-full object-cover"
-                        autoPlay
+                        className="w-full h-full object-contain"
                         loop
+                        playsInline
                         muted={volume === 0}
                       />
                     ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-black/40">
-                         <span className="font-mono text-xs text-white/20 uppercase animate-pulse">Waiting for Signal...</span>
+                      <div className="w-full h-full flex items-center justify-center bg-black">
+                         <span className="font-mono text-xs text-white/40 uppercase animate-pulse">Cargando Señal...</span>
                       </div>
                     )}
                   </div>
                 ) : (
-                  <div className="flex-1 grid grid-cols-3 gap-4 p-4 items-center">
+                  <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-1 p-1 items-center bg-black overflow-y-auto">
                     {images.length > 0 ? (
-                      images.slice(0, 6).map((img, i) => (
+                      images.map((img, i) => (
                         <motion.div
-                          key={i}
-                          initial={{ opacity: 0, scale: 0.8 }}
-                          animate={{ opacity: 1, scale: 1 }}
-                          transition={{ delay: i * 0.1 }}
-                          className="aspect-[4/3] relative border-2 border-white/20 shadow-lg"
+                          key={img.id}
+                          initial={{ opacity: 0 }}
+                          animate={{ opacity: 1 }}
+                          transition={{ delay: i * 0.05 }}
+                          className="aspect-square relative group"
                         >
-                          <Image src={img.url} alt={img.titulo || 'Gallery'} fill className="object-cover" />
+                          <Image
+                            src={img.url}
+                            alt={img.titulo || 'Gallery'}
+                            fill
+                            className="object-cover transition-transform group-hover:scale-105"
+                            sizes="(max-width: 768px) 50vw, 33vw"
+                          />
                         </motion.div>
                       ))
                     ) : (
                       <div className="col-span-3 h-full flex items-center justify-center">
-                         <span className="font-mono text-xs text-white/20 uppercase">No Media Found</span>
+                         <span className="font-mono text-xs text-white/20 uppercase">Sin Fotos</span>
                       </div>
                     )}
                   </div>
@@ -204,81 +194,54 @@ export default function TvSection() {
                   )}
                 </AnimatePresence>
 
-                {/* SCANLINES OVERLAY */}
-                <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,0.1)_50%)] bg-[length:100%_4px] z-30" />
               </div>
             </div>
           </div>
         </div>
 
-        {/* CONTROLS SIDEBAR */}
-        <div className="lg:w-48 flex flex-col gap-8">
-          <div className="bg-[#2a2a2a] p-6 shadow-brutal border-4 border-[#1a1a1a] relative">
-            {/* Branding on TV */}
-            <div className="text-center mb-6 border-b border-white/10 pb-4">
-              <span className="font-mono text-[10px] text-white/40 uppercase tracking-widest block mb-1">Travesía 2000</span>
-              <div className="w-2 h-2 rounded-full bg-red-600 mx-auto animate-pulse shadow-[0_0_5px_red]" />
+        {/* CONTROLS SIDEBAR - More compact for larger TV */}
+        <div className="flex-[3] w-full lg:max-w-[250px] flex flex-col gap-4">
+          <div className="bg-[#2a2a2a] p-4 shadow-brutal border-4 border-[#1a1a1a] relative">
+            <div className="text-center mb-4 border-b border-white/10 pb-2">
+              <span className="font-mono text-[10px] text-white/40 uppercase tracking-widest block mb-1">TRAVESÍA TV</span>
+              <div className="w-2 h-2 rounded-full bg-neon-green mx-auto shadow-[0_0_8px_#b8d300]" />
             </div>
 
-            <div className="grid grid-cols-1 gap-6">
-              {/* CHANNEL BUTTONS */}
-              <div className="flex flex-col gap-3">
-                <span className="font-mono text-[10px] text-white/60 uppercase text-center">Channels</span>
-                <div className="flex gap-2 justify-center">
-                  <button
-                    onClick={handleChannelChange}
-                    className="w-12 h-12 bg-[#333] border-t-2 border-l-2 border-white/20 border-b-4 border-r-4 border-black/60 rounded-md active:translate-y-1 active:border-b-2 flex items-center justify-center text-white/80 transition-all hover:bg-[#3a3a3a]"
-                  >
-                    <ChevronLeft size={20} />
-                  </button>
-                  <button
-                    onClick={handleChannelChange}
-                    className="w-12 h-12 bg-[#333] border-t-2 border-l-2 border-white/20 border-b-4 border-r-4 border-black/60 rounded-md active:translate-y-1 active:border-b-2 flex items-center justify-center text-white/80 transition-all hover:bg-[#3a3a3a]"
-                  >
-                    <ChevronRight size={20} />
-                  </button>
-                </div>
-              </div>
+            <div className="flex flex-col gap-6">
+              {/* MODE BUTTON */}
+              <button
+                onClick={handleChannelChange}
+                className="btn-tape py-3 text-xs w-full"
+              >
+                {mode === 'video' ? 'VER FOTOS' : 'VER VIDEO'}
+              </button>
 
               {/* VOLUME BUTTONS */}
-              <div className="flex flex-col gap-3">
-                <span className="font-mono text-[10px] text-white/60 uppercase text-center">Volume</span>
+              <div className="flex flex-col gap-2">
+                <span className="font-mono text-[8px] text-white/60 uppercase text-center">Volumen</span>
                 <div className="flex gap-2 justify-center">
                   <button
                     onClick={() => adjustVolume(-10)}
-                    className="w-12 h-12 bg-[#333] border-t-2 border-l-2 border-white/20 border-b-4 border-r-4 border-black/60 rounded-md active:translate-y-1 active:border-b-2 flex items-center justify-center text-white/80 transition-all hover:bg-[#3a3a3a]"
+                    className="flex-1 h-10 bg-[#333] border-2 border-black rounded flex items-center justify-center text-white hover:bg-white/10 transition-colors"
                   >
                     -
                   </button>
                   <button
                     onClick={() => adjustVolume(10)}
-                    className="w-12 h-12 bg-[#333] border-t-2 border-l-2 border-white/20 border-b-4 border-r-4 border-black/60 rounded-md active:translate-y-1 active:border-b-2 flex items-center justify-center text-white/80 transition-all hover:bg-[#3a3a3a]"
+                    className="flex-1 h-10 bg-[#333] border-2 border-black rounded flex items-center justify-center text-white hover:bg-white/10 transition-colors"
                   >
                     +
                   </button>
                 </div>
               </div>
 
-              {/* POWER BUTTON */}
-              <div className="mt-4 pt-4 border-t border-white/10 flex flex-col items-center gap-2">
-                <button
-                  onClick={() => setIsOn(!isOn)}
-                  className={`w-10 h-10 rounded-full border-2 border-black/40 shadow-inner flex items-center justify-center transition-all ${isOn ? 'bg-red-500 shadow-[0_0_10px_rgba(239,68,68,0.5)]' : 'bg-red-900'}`}
-                >
-                  <div className="w-3 h-3 border-2 border-white/40 rounded-full" />
-                </button>
-                <span className="font-mono text-[8px] text-white/40 uppercase">Power</span>
+              {/* EXTRA INFO */}
+              <div className="mt-2 text-[8px] font-mono text-white/20 uppercase space-y-1">
+                <p>SIGNAL: FULL_COLOR</p>
+                <p>REFRESH: 60HZ</p>
+                <p>SOURCE: SUPABASE_DB</p>
               </div>
             </div>
-          </div>
-
-          {/* Brutalist Detail */}
-          <div className="h-32 border-l-4 border-neon-green pl-4 flex items-center">
-            <p className="font-mono text-[10px] text-white/60 leading-tight uppercase">
-              {/* ANALOG_FEED_01 */}<br/>
-              {/* RESOLUTION_CRT */}<br/>
-              {/* TRAVESIA_CLUB */}
-            </p>
           </div>
         </div>
       </div>
