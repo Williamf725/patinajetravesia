@@ -4,13 +4,8 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { ChevronLeft, ChevronRight, Volume2, VolumeX, Volume1 } from 'lucide-react';
-
-const TEST_VIDEO = "https://www.w3schools.com/html/mov_bbb.mp4";
-const TEST_IMAGES = [
-  "https://picsum.photos/seed/skate1/300/200",
-  "https://picsum.photos/seed/skate2/300/200",
-  "https://picsum.photos/seed/skate3/300/200",
-];
+import { createClient } from '@/lib/supabase/client';
+import { Galeria } from '@/types/database';
 
 type Mode = 'video' | 'gallery';
 
@@ -20,8 +15,37 @@ export default function TvSection() {
   const [isChangingChannel, setIsChangingChannel] = useState(false);
   const [volume, setVolume] = useState(50);
   const [showVolumeUI, setShowVolumeUI] = useState(false);
+
+  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [images, setImages] = useState<Galeria[]>([]);
+
   const videoRef = useRef<HTMLVideoElement>(null);
   const volumeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+  const supabase = createClient();
+
+  // Fetch real content from Supabase
+  useEffect(() => {
+    const fetchContent = async () => {
+      const { data: videoData } = await supabase
+        .from('galeria')
+        .select('url')
+        .eq('tipo', 'video')
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      const { data: imageData } = await supabase
+        .from('galeria')
+        .select('*')
+        .eq('tipo', 'foto')
+        .order('created_at', { ascending: false })
+        .limit(6);
+
+      if (videoData && videoData.length > 0) setVideoUrl(videoData[0].url);
+      if (imageData) setImages(imageData as Galeria[]);
+    };
+
+    fetchContent();
+  }, [supabase]);
 
   // Intersection Observer for power on
   useEffect(() => {
@@ -66,8 +90,8 @@ export default function TvSection() {
     <section id="tv-section" className="min-height-screen py-24 flex items-center justify-center bg-black/40 relative overflow-hidden">
       {/* Background Decor (Brutalist) */}
       <div className="absolute top-0 left-0 w-full h-full pointer-events-none opacity-20">
-        <div className="absolute top-10 left-10 text-[15vw] font-anton text-white leading-none select-none">REPLAY</div>
-        <div className="absolute bottom-10 right-10 text-[10vw] font-anton text-neon-green leading-none select-none">TRAVESIA</div>
+        <div className="absolute top-10 left-10 text-[15vw] font-anton text-white leading-none select-none uppercase">REPLAY</div>
+        <div className="absolute bottom-10 right-10 text-[10vw] font-anton text-neon-green leading-none select-none uppercase">TRAVESIA</div>
       </div>
 
       <div className="container max-w-6xl px-4 flex flex-col lg:flex-row items-center gap-12 relative z-10">
@@ -114,50 +138,49 @@ export default function TvSection() {
 
                 {mode === 'video' ? (
                   <div className="flex-1 w-full h-full relative group">
-                    <video
-                      ref={videoRef}
-                      src={TEST_VIDEO}
-                      className="w-full h-full object-cover"
-                      autoPlay
-                      loop
-                      muted={volume === 0}
-                    />
-                    {/* Placeholder for Supabase integration:
-                        To fetch from Supabase, use useEffect to query the 'galeria' table
-                        where type = 'video'.
-                        Example:
-                        const { data } = await supabase.from('galeria').select('url').eq('type', 'video').single();
-                        setVideoUrl(data.url);
-                    */}
+                    {videoUrl ? (
+                      <video
+                        ref={videoRef}
+                        src={videoUrl}
+                        className="w-full h-full object-cover"
+                        autoPlay
+                        loop
+                        muted={volume === 0}
+                      />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center bg-black/40">
+                         <span className="font-mono text-xs text-white/20 uppercase animate-pulse">Waiting for Signal...</span>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="flex-1 grid grid-cols-3 gap-4 p-4 items-center">
-                    {TEST_IMAGES.map((img, i) => (
-                      <motion.div
-                        key={i}
-                        initial={{ opacity: 0, scale: 0.8 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        transition={{ delay: i * 0.1 }}
-                        className="aspect-[4/3] relative border-2 border-white/20 shadow-lg"
-                      >
-                        <Image src={img} alt={`Gallery ${i}`} fill className="object-cover" />
-                      </motion.div>
-                    ))}
-                    {/* Placeholder for Supabase integration:
-                        Query 'galeria' table where type = 'foto'.
-                        Example:
-                        const { data } = await supabase.from('galeria').select('url').eq('type', 'foto');
-                        setImages(data.map(i => i.url));
-                    */}
+                    {images.length > 0 ? (
+                      images.slice(0, 6).map((img, i) => (
+                        <motion.div
+                          key={i}
+                          initial={{ opacity: 0, scale: 0.8 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          transition={{ delay: i * 0.1 }}
+                          className="aspect-[4/3] relative border-2 border-white/20 shadow-lg"
+                        >
+                          <Image src={img.url} alt={img.titulo || 'Gallery'} fill className="object-cover" />
+                        </motion.div>
+                      ))
+                    ) : (
+                      <div className="col-span-3 h-full flex items-center justify-center">
+                         <span className="font-mono text-xs text-white/20 uppercase">No Media Found</span>
+                      </div>
+                    )}
                   </div>
                 )}
 
                 {/* SMALL GALLERY FOOTER (Mode Video) */}
-                {mode === 'video' && (
+                {mode === 'video' && images.length > 0 && (
                   <div className="h-20 mt-4 flex justify-center gap-2">
-                    {TEST_IMAGES.map((img, i) => (
+                    {images.slice(0, 4).map((img, i) => (
                       <div key={i} className="h-full aspect-video relative border border-white/10 opacity-50 grayscale">
-                        <Image src={img} alt={`Thumb ${i}`} fill className="object-cover" />
+                        <Image src={img.url} alt={`Thumb ${i}`} fill className="object-cover" />
                       </div>
                     ))}
                   </div>
