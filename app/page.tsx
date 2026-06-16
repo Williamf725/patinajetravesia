@@ -1,9 +1,11 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import TvSection from '@/components/sections/TvSection';
 
 export default function Home() {
   return (
+    <>
     <div className="min-h-[calc(100vh-80px)] flex flex-col items-center justify-center px-6 md:px-20 py-10 relative">
 
       {/* Main Content: Title & Button */}
@@ -71,5 +73,8 @@ export default function Home() {
       </div>
 
     </div>
+
+    <TvSection />
+    </>
   );
 }

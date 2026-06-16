@@ -1,22 +1,22 @@
 'use client';
 
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { User } from '@supabase/supabase-js';
-import { signOut } from '@/app/auth/actions';
 
-const navLinks = [
-  { name: 'La Historia', href: '#' },
-  { name: 'Entrenamientos', href: '#' },
-  { name: 'Galería', href: '#' },
-  { name: 'Únete', href: '#' },
-];
+const ADMIN_EMAIL = 'patinajetravesia@gmail.com';
 
 export default function Navbar() {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [error, setError] = useState<string | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   const supabase = createClient();
 
   useEffect(() => {
@@ -36,24 +36,151 @@ export default function Navbar() {
     return () => subscription.unsubscribe();
   }, [supabase]);
 
+  const handleLogin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setError(null);
+
+    const { error } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (error) {
+      setError(error.message);
+      setIsSubmitting(false);
+    } else {
+      setIsModalOpen(false);
+      setIsSubmitting(false);
+      setEmail('');
+      setPassword('');
+    }
+  };
+
+  const isAdmin = user?.email === ADMIN_EMAIL;
+
   return (
-    <motion.nav
-      initial={{ y: -100 }}
-      animate={{ y: 0 }}
-      transition={{ duration: 0.5 }}
-      className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 md:px-12 md:py-8"
-    >
-      <div className="flex gap-6 md:gap-10">
-        {navLinks.map((link) => (
-          <Link
-            key={link.name}
-            href={link.href}
-            className="nav-link text-xs md:text-sm tracking-widest"
-          >
-            {link.name}
-          </Link>
-        ))}
-      </div>
-    </motion.nav>
+    <>
+      <motion.nav
+        initial={{ y: -100 }}
+        animate={{ y: 0 }}
+        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
+        className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 md:px-12 md:py-8"
+      >
+        <Link href="/" className="font-anton text-2xl md:text-3xl text-white tracking-tighter hover:text-neon-green transition-colors duration-300">
+          TRAVESÍA<span className="text-neon-green">.</span>
+        </Link>
+
+        <div className="flex items-center gap-4 md:gap-8">
+          {!loading && (
+            <>
+              {user ? (
+                isAdmin ? (
+                  <Link
+                    href="/admin"
+                    className="btn-tape text-[10px] md:text-xs tracking-widest px-4 py-2"
+                  >
+                    PANEL CONTROL
+                  </Link>
+                ) : (
+                  <button
+                    onClick={() => supabase.auth.signOut()}
+                    className="nav-link text-[10px] md:text-xs tracking-widest uppercase border border-white/20 px-4 py-2"
+                  >
+                    CERRAR SESIÓN
+                  </button>
+                )
+              ) : (
+                <button
+                  onClick={() => setIsModalOpen(true)}
+                  className="nav-link text-[10px] md:text-xs tracking-widest uppercase border border-white/20 px-4 py-2 hover:bg-white hover:text-black transition-all"
+                >
+                  ACCESO ADMIN
+                </button>
+              )}
+            </>
+          )}
+        </div>
+      </motion.nav>
+
+      {/* Login Modal */}
+      <AnimatePresence>
+        {isModalOpen && (
+          <div className="fixed inset-0 z-[100] flex items-center justify-center p-6">
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsModalOpen(false)}
+              className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+            />
+
+            <motion.div
+              initial={{ scale: 0.9, opacity: 0, y: 20 }}
+              animate={{ scale: 1, opacity: 1, y: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: 20 }}
+              className="relative w-full max-w-md bg-[#131313] border-4 border-white p-8 md:p-10 shadow-brutal-lg"
+            >
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="absolute top-4 right-4 text-white/40 hover:text-white transition-colors font-mono text-xl"
+              >
+                ✕
+              </button>
+
+              <h2 className="font-anton text-4xl text-white uppercase mb-2 tracking-tight">
+                ADMIN <span className="text-neon-green">GATEWAY</span>
+              </h2>
+              <p className="font-mono text-[10px] text-white/40 uppercase tracking-[0.3em] mb-8">
+                Identify yourself
+              </p>
+
+              <form onSubmit={handleLogin} className="flex flex-col gap-6">
+                <div className="flex flex-col gap-2">
+                  <label className="font-mono text-[10px] text-neon-green uppercase tracking-[0.2em] font-bold">
+                    Email
+                  </label>
+                  <input
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    className="bg-transparent border-b-2 border-white/20 p-2 text-white focus:border-neon-green outline-none transition-all font-mono text-sm"
+                    placeholder="admin@travesia.club"
+                  />
+                </div>
+
+                <div className="flex flex-col gap-2">
+                  <label className="font-mono text-[10px] text-neon-green uppercase tracking-[0.2em] font-bold">
+                    Key
+                  </label>
+                  <input
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    required
+                    className="bg-transparent border-b-2 border-white/20 p-2 text-white focus:border-neon-green outline-none transition-all font-mono text-sm"
+                    placeholder="••••••••"
+                  />
+                </div>
+
+                {error && (
+                  <div className="p-3 bg-hot-pink/10 border-l-4 border-hot-pink text-hot-pink font-mono text-[9px] uppercase tracking-wider">
+                    {error}
+                  </div>
+                )}
+
+                <button
+                  disabled={isSubmitting}
+                  className="btn-tape w-full py-4 mt-4 text-lg tracking-widest font-anton disabled:opacity-50"
+                >
+                  {isSubmitting ? 'VERIFICANDO...' : 'INGRESAR'}
+                </button>
+              </form>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+    </>
   );
 }

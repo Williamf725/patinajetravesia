@@ -3,6 +3,8 @@ import { Anton, Space_Grotesk, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import Background from "@/components/Background";
 import Navbar from "@/components/Navbar";
+import PageTransition from "@/components/PageTransition";
+import CustomCursor from "@/components/CustomCursor";
 
 const anton = Anton({
   weight: "400",
@@ -35,11 +37,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="es" className={`${anton.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable}`}>
-      <body className="antialiased min-h-screen">
+      <body className="antialiased min-h-screen selection:bg-neon-green selection:text-black bg-black">
+        <CustomCursor />
         <Background />
         <Navbar />
         <main className="relative z-0 pt-20">
-          {children}
+          <PageTransition>
+            {children}
+          </PageTransition>
         </main>
       </body>
     </html>
