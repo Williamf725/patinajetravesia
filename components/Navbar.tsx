@@ -71,6 +71,13 @@ export default function Navbar() {
           TRAVESÍA<span className="text-neon-green">.</span>
         </Link>
 
+        <div className="hidden lg:flex items-center gap-8">
+          <a href="#historia" className="nav-link text-xs tracking-widest uppercase">La Historia</a>
+          <a href="#entrenamientos" className="nav-link text-xs tracking-widest uppercase">Entrenamientos</a>
+          <a href="#galeria" className="nav-link text-xs tracking-widest uppercase">Galería</a>
+          <a href="#unete" className="nav-link text-xs tracking-widest uppercase">Únete</a>
+        </div>
+
         <div className="flex items-center gap-4 md:gap-8">
           {!loading && (
             <>

@@ -2,6 +2,9 @@
 
 import { motion } from 'framer-motion';
 import TvSection from '@/components/sections/TvSection';
+import EsenciaSection from '@/components/sections/EsenciaSection';
+import EntrenamientosSection from '@/components/sections/EntrenamientosSection';
+import UneteSection from '@/components/sections/UneteSection';
 
 export default function Home() {
   return (
@@ -74,7 +77,10 @@ export default function Home() {
 
     </div>
 
+    <EsenciaSection />
     <TvSection />
+    <EntrenamientosSection />
+    <UneteSection />
     </>
   );
 }

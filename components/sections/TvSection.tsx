@@ -87,7 +87,7 @@ export default function TvSection() {
   };
 
   return (
-    <section id="tv-section" className="min-height-screen py-24 flex items-center justify-center bg-black/40 relative overflow-hidden">
+    <section id="galeria" className="min-height-screen py-24 flex items-center justify-center bg-black/40 relative overflow-hidden">
       {/* Background Decor (Brutalist) */}
       <div className="absolute top-0 left-0 w-full h-full pointer-events-none opacity-20">
         <div className="absolute top-10 left-10 text-[15vw] font-anton text-white leading-none select-none uppercase">REPLAY</div>

@@ -20,6 +20,10 @@
   --font-mono: var(--font-mono), "JetBrains Mono", monospace;
 }
 
+html {
+  scroll-behavior: smooth;
+}
+
 body {
   background: var(--background);
   color: var(--foreground);
@@ -235,4 +239,41 @@ body {
   background: radial-gradient(circle, rgba(139, 69, 19, 0.2) 0%, transparent 70%);
   filter: blur(10px);
   pointer-events: none;
+}
+
+/* Texture Utilities */
+.bg-grain {
+  background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+  opacity: 0.15;
+}
+
+.bg-metal-oxidized {
+  background:
+    radial-gradient(circle at 50% 50%, rgba(0,0,0,0) 0%, rgba(0,0,0,0.5) 100%),
+    linear-gradient(45deg, #1a1a1a 25%, #222 25%, #222 50%, #1a1a1a 50%, #1a1a1a 75%, #222 75%, #222 100%),
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='f'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='4'/%3E%3CfeColorMatrix type='saturate' values='0'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23f)' opacity='0.2'/%3E%3C/svg%3E");
+  background-size: cover, 100px 100px, auto;
+}
+
+.bg-paper-texture {
+  background-color: #f0f0f0;
+  background-image:
+    url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.05'/%3E%3C/svg%3E");
+}
+
+.mask-torn-paper {
+  mask-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 100 100' preserveAspectRatio='none' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M0,0 L100,0 L100,95 C90,98 80,92 70,95 C60,98 50,90 40,95 C30,98 20,90 10,95 C5,97 0,93 0,95 Z' fill='black'/%3E%3C/svg%3E");
+  mask-size: 100% 100%;
+}
+
+.masking-tape {
+  background: rgba(255, 235, 100, 0.7);
+  box-shadow: 2px 2px 5px rgba(0,0,0,0.1);
+  backdrop-blur: 1px;
+}
+
+.clear-tape {
+  background: rgba(255, 255, 255, 0.2);
+  box-shadow: inset 0 0 5px rgba(255,255,255,0.3);
+  backdrop-blur: 2px;
 }
