@@ -85,14 +85,6 @@ export default async function SignupPage({
               </p>
             )}
 
-            <div className="mt-6 text-center">
-              <p className="font-mono text-xs text-white/60 uppercase">
-                ¿Ya tienes cuenta? {' '}
-                <Link href="/login" className="text-hot-pink hover:underline">
-                  INICIA SESIÓN
-                </Link>
-              </p>
-            </div>
           </div>
         </div>
       </form>

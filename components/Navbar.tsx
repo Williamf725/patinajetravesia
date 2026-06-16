@@ -54,34 +54,6 @@ export default function Navbar() {
           </Link>
         ))}
       </div>
-
-      <div className="flex items-center gap-4">
-        {!loading && (
-          <>
-            {user ? (
-              <>
-                <Link
-                  href="/dashboard"
-                  className="nav-link text-xs md:text-sm tracking-widest !text-white"
-                >
-                  DASHBOARD
-                </Link>
-                <form action={signOut}>
-                  <button className="btn-tape !bg-hot-pink text-black border-black text-xs md:text-sm px-4 py-2">
-                    SALIR
-                  </button>
-                </form>
-              </>
-            ) : (
-              <Link href="/login">
-                <button className="btn-tape !bg-neon-orange text-black border-black text-xs md:text-sm px-4 py-2">
-                  INICIA SESIÓN
-                </button>
-              </Link>
-            )}
-          </>
-        )}
-      </div>
     </motion.nav>
   );
 }
