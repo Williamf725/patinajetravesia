@@ -36,7 +36,8 @@ CREATE TABLE IF NOT EXISTS public.pagos (
     abonos JSONB DEFAULT '[]'::jsonb, -- Array de objetos: { monto: number, fecha: string }
     observaciones TEXT,
     created_at TIMESTAMPTZ DEFAULT now(),
-    updated_at TIMESTAMPTZ DEFAULT now()
+    updated_at TIMESTAMPTZ DEFAULT now(),
+    UNIQUE(alumno_id, mes, anio)
 );
 
 -- Tabla de Galería

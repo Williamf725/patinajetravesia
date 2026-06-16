@@ -1,23 +1,23 @@
 'use client';
 
 import React, { useState, useRef, useEffect } from 'react';
-import { motion, AnimatePresence, useInView } from 'framer-motion';
+import { motion, useInView, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
-import { Volume2, VolumeX, Volume1 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { Galeria } from '@/types/database';
 
 export default function TvSection() {
-  const [volume, setVolume] = useState(50);
-  const [showVolumeUI, setShowVolumeUI] = useState(false);
+  const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
+  const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  const [showVolume, setShowVolume] = useState(false);
+  const volumeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [videoUrls, setVideoUrls] = useState<string[]>([]);
   const [images, setImages] = useState<Galeria[]>([]);
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const sectionRef = useRef<HTMLElement>(null);
   const isInView = useInView(sectionRef, { amount: 0.3 });
-  const volumeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
   const supabase = createClient();
 
   // Fetch real content from Supabase
@@ -28,16 +28,16 @@ export default function TvSection() {
         .select('url')
         .eq('tipo', 'video')
         .order('created_at', { ascending: false })
-        .limit(1);
+        .limit(10);
 
       const { data: imageData } = await supabase
         .from('galeria')
         .select('*')
         .eq('tipo', 'foto')
         .order('created_at', { ascending: false })
-        .limit(4);
+        .limit(30);
 
-      if (videoData && videoData.length > 0) setVideoUrl(videoData[0].url);
+      if (videoData) setVideoUrls(videoData.map(v => v.url));
       if (imageData) setImages(imageData as Galeria[]);
     };
 
@@ -53,21 +53,33 @@ export default function TvSection() {
         videoRef.current.pause();
       }
     }
-  }, [isInView]);
+  }, [isInView, currentVideoIndex]);
 
-  const adjustVolume = (delta: number) => {
-    setVolume(prev => {
-      const newVol = Math.max(0, Math.min(100, prev + delta));
-      if (videoRef.current) {
-        videoRef.current.volume = newVol / 100;
-      }
-      return newVol;
-    });
+  const handleChannelChange = (direction: 'next' | 'prev') => {
+    if (videoUrls.length === 0) return;
 
-    setShowVolumeUI(true);
-    if (volumeTimeoutRef.current) clearTimeout(volumeTimeoutRef.current);
-    volumeTimeoutRef.current = setTimeout(() => setShowVolumeUI(false), 2000);
+    if (direction === 'next') {
+      setCurrentVideoIndex(prev => (prev + 1) % videoUrls.length);
+    } else {
+      setCurrentVideoIndex(prev => (prev - 1 + videoUrls.length) % videoUrls.length);
+    }
   };
+
+  const handleGalleryScroll = (direction: 'next' | 'prev') => {
+    if (images.length <= 3) return;
+
+    if (direction === 'next') {
+      setCurrentImageIndex(prev => (prev + 1) % (images.length - 2));
+    } else {
+      setCurrentImageIndex(prev => (prev - 1 + (images.length - 2)) % (images.length - 2));
+    }
+
+    setShowVolume(true);
+    if (volumeTimeoutRef.current) clearTimeout(volumeTimeoutRef.current);
+    volumeTimeoutRef.current = setTimeout(() => setShowVolume(false), 2000);
+  };
+
+  const visibleImages = images.slice(currentImageIndex, currentImageIndex + 3);
 
   return (
     <section
@@ -98,30 +110,65 @@ export default function TvSection() {
 
                 {/* TOP 60% - VIDEO */}
                 <div className="h-[60%] w-full relative group bg-black border-b border-white/20">
-                  {videoUrl ? (
-                    <video
+                  {videoUrls.length > 0 ? (
+                    <motion.video
+                      key={currentVideoIndex}
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
                       ref={videoRef}
-                      src={videoUrl}
+                      src={videoUrls[currentVideoIndex]}
                       className="w-full h-full object-cover"
                       loop
                       playsInline
-                      muted={volume === 0}
+                      autoPlay
+                      muted
                     />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center">
                         <span className="font-mono text-xs text-white/40 uppercase animate-pulse">Cargando Señal...</span>
                     </div>
                   )}
+
+                  {/* Channel Overlay */}
+                  <div className="absolute top-4 left-4 z-20 bg-black/80 text-neon-green px-2 py-1 font-mono text-xs border border-neon-green">
+                    CH {currentVideoIndex + 1}
+                  </div>
                 </div>
 
-                {/* BOTTOM 40% - IMAGE COLLAGE */}
-                <div className="h-[40%] w-full grid grid-cols-2 md:grid-cols-4 gap-1 p-1 bg-[#1a1a1a]">
-                  {images.length > 0 ? (
-                    images.map((img, i) => (
+                {/* BOTTOM 40% - IMAGE COLLAGE (3 horizontally) */}
+                <div className="h-[40%] w-full grid grid-cols-3 gap-1 p-1 bg-[#1a1a1a] relative">
+                  {/* Volume Indicator Overlay */}
+                  <AnimatePresence>
+                    {showVolume && (
                       <motion.div
-                        key={img.id}
-                        initial={{ opacity: 0, scale: 0.9 }}
-                        animate={{ opacity: 1, scale: 1 }}
+                        initial={{ opacity: 0, x: -20 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        exit={{ opacity: 0, x: -20 }}
+                        className="absolute bottom-4 left-4 z-30 flex flex-col gap-1 pointer-events-none"
+                      >
+                        <span className="text-[10px] font-mono text-hot-pink mb-1">GALLERY_POS</span>
+                        <div className="flex gap-1">
+                          {Array.from({ length: Math.min(images.length, 10) }).map((_, i) => (
+                            <div
+                              key={i}
+                              className={`w-2 h-4 border ${
+                                i <= (currentImageIndex % 10)
+                                  ? 'bg-hot-pink border-hot-pink'
+                                  : 'bg-transparent border-white/20'
+                              }`}
+                            />
+                          ))}
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+
+                  {visibleImages.length > 0 ? (
+                    visibleImages.map((img, i) => (
+                      <motion.div
+                        key={`${img.id}-${currentImageIndex}`}
+                        initial={{ opacity: 0, x: 20 }}
+                        animate={{ opacity: 1, x: 0 }}
                         transition={{ delay: i * 0.1 }}
                         className="relative h-full w-full group overflow-hidden"
                       >
@@ -130,7 +177,7 @@ export default function TvSection() {
                           alt={img.titulo || 'Gallery'}
                           fill
                           className="object-cover transition-transform duration-500 group-hover:scale-110"
-                          sizes="(max-width: 768px) 50vw, 25vw"
+                          sizes="33vw"
                         />
                         <div className="absolute inset-0 bg-neon-green/0 group-hover:bg-neon-green/10 transition-colors" />
                       </motion.div>
@@ -142,73 +189,101 @@ export default function TvSection() {
                   )}
                 </div>
 
-                {/* VOLUME UI */}
-                <AnimatePresence>
-                  {showVolumeUI && (
-                    <motion.div
-                      initial={{ opacity: 0, y: 10 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      exit={{ opacity: 0 }}
-                      className="absolute bottom-8 left-1/2 -translate-x-1/2 bg-neon-green text-black px-4 py-2 font-mono text-sm font-bold flex items-center gap-2 z-50"
-                    >
-                      {volume === 0 ? <VolumeX size={16} /> : volume < 50 ? <Volume1 size={16} /> : <Volume2 size={16} />}
-                      <div className="w-32 h-2 bg-black/20 relative">
-                        <div className="absolute top-0 left-0 h-full bg-black" style={{ width: `${volume}%` }} />
-                      </div>
-                      <span>{volume}%</span>
-                    </motion.div>
-                  )}
-                </AnimatePresence>
-
               </div>
             </div>
           </div>
         </div>
 
-        {/* CONTROLS SIDEBAR - More compact for larger TV */}
+        {/* CONTROLS SIDEBAR - Analog Brutalist Style */}
         <div className="flex-[3] w-full lg:max-w-[250px] flex flex-col gap-4">
-          <div className="bg-[#2a2a2a] p-4 shadow-brutal border-4 border-[#1a1a1a] relative">
-            <div className="text-center mb-4 border-b border-white/10 pb-2">
-              <span className="font-mono text-[10px] text-white/40 uppercase tracking-widest block mb-1">TRAVESÍA TV</span>
-              <div className="w-2 h-2 rounded-full bg-neon-green mx-auto shadow-[0_0_8px_#b8d300]" />
+          <div className="bg-[#1a1a1a] p-5 shadow-brutal border-4 border-white relative overflow-hidden">
+            {/* Speaker Grill Texture */}
+            <div className="absolute top-0 right-0 w-12 h-full opacity-10 pointer-events-none"
+                 style={{ backgroundImage: 'radial-gradient(#fff 1px, transparent 1px)', backgroundSize: '4px 4px' }} />
+
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-6 border-b border-white/20 pb-4">
+                <div className="bg-black px-2 py-1 border border-white/40 -rotate-2 shadow-sm">
+                  <span className="font-mono text-[10px] text-white uppercase tracking-widest">TRAVESÍA_TV</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="w-2.5 h-2.5 rounded-full bg-neon-green shadow-[0_0_10px_#b8d300] animate-pulse" />
+                  <span className="font-mono text-[8px] text-white/40 tracking-tighter">SIGNAL</span>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-8">
+                {/* VIDEO CHANNEL BUTTONS (Analog Feel) */}
+                <div className="relative">
+                  <div className="absolute -top-3 left-2 bg-black px-1 z-10">
+                    <span className="font-mono text-[8px] text-neon-green uppercase font-bold tracking-widest">CHANNEL_SEL</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 pt-2">
+                    <button
+                      onClick={() => handleChannelChange('prev')}
+                      className="h-12 bg-[#222] border-b-4 border-r-4 border-black active:border-0 active:translate-y-1 active:translate-x-1 flex items-center justify-center text-white hover:text-neon-green transition-all"
+                    >
+                      <span className="font-anton text-sm">CH-</span>
+                    </button>
+                    <button
+                      onClick={() => handleChannelChange('next')}
+                      className="h-12 bg-[#222] border-b-4 border-r-4 border-black active:border-0 active:translate-y-1 active:translate-x-1 flex items-center justify-center text-white hover:text-neon-green transition-all"
+                    >
+                      <span className="font-anton text-sm">CH+</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* IMAGE NAVIGATION (Volume Style) */}
+                <div className="relative">
+                  <div className="absolute -top-3 left-2 bg-black px-1 z-10">
+                    <span className="font-mono text-[8px] text-hot-pink uppercase font-bold tracking-widest">GALLERY_VOL</span>
+                  </div>
+                  <div className="grid grid-cols-2 gap-3 pt-2">
+                    <button
+                      onClick={() => handleGalleryScroll('prev')}
+                      className="h-12 bg-[#222] border-b-4 border-r-4 border-black active:border-0 active:translate-y-1 active:translate-x-1 flex items-center justify-center text-white hover:text-hot-pink transition-all"
+                    >
+                      <span className="font-anton text-sm">VOL-</span>
+                    </button>
+                    <button
+                      onClick={() => handleGalleryScroll('next')}
+                      className="h-12 bg-[#222] border-b-4 border-r-4 border-black active:border-0 active:translate-y-1 active:translate-x-1 flex items-center justify-center text-white hover:text-hot-pink transition-all"
+                    >
+                      <span className="font-anton text-sm">VOL+</span>
+                    </button>
+                  </div>
+                </div>
+
+                {/* MISC DIALS / DECOR */}
+                <div className="flex justify-between items-end mt-4">
+                  <div className="flex gap-1.5">
+                    {[1,2,3,4].map(i => (
+                      <div key={i} className="w-1 h-4 bg-[#333] border-t border-white/10" />
+                    ))}
+                  </div>
+                  <div className="bg-neon-green text-black px-1.5 py-0.5 font-mono text-[8px] font-bold">
+                    8K_ULTRA
+                  </div>
+                </div>
+              </div>
             </div>
 
-            <div className="flex flex-col gap-6">
-              {/* STATUS INDICATOR */}
-              <div className="flex items-center justify-between px-2">
-                <span className="font-mono text-[10px] text-neon-green">LIVE</span>
-                <div className="flex gap-1">
-                  <div className="w-1.5 h-1.5 bg-neon-green rounded-full animate-pulse" />
-                  <div className="w-1.5 h-1.5 bg-hot-pink rounded-full animate-pulse delay-75" />
-                  <div className="w-1.5 h-1.5 bg-neon-orange rounded-full animate-pulse delay-150" />
-                </div>
-              </div>
+            {/* Bottom Branding Label */}
+            <div className="mt-8 pt-4 border-t border-white/10 text-center">
+               <p className="font-mono text-[7px] text-white/20 uppercase tracking-[0.4em]">
+                 Propiedad de Club Travesía © 2024
+               </p>
+            </div>
+          </div>
 
-              {/* VOLUME BUTTONS */}
-              <div className="flex flex-col gap-2">
-                <span className="font-mono text-[8px] text-white/60 uppercase text-center">Volumen</span>
-                <div className="flex gap-2 justify-center">
-                  <button
-                    onClick={() => adjustVolume(-10)}
-                    className="flex-1 h-10 bg-[#333] border-2 border-black rounded flex items-center justify-center text-white hover:bg-white/10 transition-colors"
-                  >
-                    -
-                  </button>
-                  <button
-                    onClick={() => adjustVolume(10)}
-                    className="flex-1 h-10 bg-[#333] border-2 border-black rounded flex items-center justify-center text-white hover:bg-white/10 transition-colors"
-                  >
-                    +
-                  </button>
-                </div>
-              </div>
-
-              {/* EXTRA INFO */}
-              <div className="mt-2 text-[8px] font-mono text-white/20 uppercase space-y-1">
-                <p>SIGNAL: FULL_COLOR</p>
-                <p>REFRESH: 60HZ</p>
-                <p>SOURCE: SUPABASE_DB</p>
-              </div>
+          {/* Secondary Control Unit (Small) */}
+          <div className="bg-[#1a1a1a] p-3 border-2 border-white/20 flex justify-around">
+            <div className="w-6 h-6 rounded-full border-2 border-white/10 flex items-center justify-center group cursor-pointer hover:border-hot-pink transition-colors">
+               <div className="w-2 h-2 rounded-full bg-white/20 group-hover:bg-hot-pink animate-pulse" />
+            </div>
+            <div className="w-6 h-6 rounded-full border-2 border-white/10 flex items-center justify-center group cursor-pointer hover:border-neon-green transition-colors">
+               <div className="w-2 h-2 rounded-full bg-white/20 group-hover:bg-neon-green" />
             </div>
           </div>
         </div>
