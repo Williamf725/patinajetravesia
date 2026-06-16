@@ -18,3 +18,6 @@
  GET / 200 in 17407ms
  ✓ Compiled in 1932ms (731 modules)
  ✓ Compiled in 1798ms (900 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/app/.next/cache/webpack/edge-server-development/1.pack.gz_' -> '/app/.next/cache/webpack/edge-server-development/1.pack.gz'
+<w> [webpack.cache.PackFileCacheStrategy] Caching failed for pack: Error: ENOENT: no such file or directory, rename '/app/.next/cache/webpack/client-development/2.pack.gz_' -> '/app/.next/cache/webpack/client-development/2.pack.gz'
+ ✓ Compiled in 3.3s (731 modules)

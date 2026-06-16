@@ -252,9 +252,9 @@ export default function TvSection() {
           {/* Brutalist Detail */}
           <div className="h-32 border-l-4 border-neon-green pl-4 flex items-center">
             <p className="font-mono text-[10px] text-white/60 leading-tight uppercase">
-              // ANALOG_FEED_01<br/>
-              // RESOLUTION_CRT<br/>
-              // TRAVESIA_CLUB
+              {/* ANALOG_FEED_01 */}<br/>
+              {/* RESOLUTION_CRT */}<br/>
+              {/* TRAVESIA_CLUB */}
             </p>
           </div>
         </div>
