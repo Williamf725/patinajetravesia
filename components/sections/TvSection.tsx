@@ -7,11 +7,7 @@ import { Volume2, VolumeX, Volume1 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { Galeria } from '@/types/database';
 
-type Mode = 'video' | 'gallery';
-
 export default function TvSection() {
-  const [mode, setMode] = useState<Mode>('video');
-  const [isChangingChannel, setIsChangingChannel] = useState(false);
   const [volume, setVolume] = useState(50);
   const [showVolumeUI, setShowVolumeUI] = useState(false);
 
@@ -39,7 +35,7 @@ export default function TvSection() {
         .select('*')
         .eq('tipo', 'foto')
         .order('created_at', { ascending: false })
-        .limit(6);
+        .limit(4);
 
       if (videoData && videoData.length > 0) setVideoUrl(videoData[0].url);
       if (imageData) setImages(imageData as Galeria[]);
@@ -51,21 +47,13 @@ export default function TvSection() {
   // Handle video playback based on visibility
   useEffect(() => {
     if (videoRef.current) {
-      if (isInView && mode === 'video') {
+      if (isInView) {
         videoRef.current.play().catch(e => console.error("Auto-play blocked:", e));
       } else {
         videoRef.current.pause();
       }
     }
-  }, [isInView, mode]);
-
-  const handleChannelChange = () => {
-    setIsChangingChannel(true);
-    setTimeout(() => {
-      setMode(prev => prev === 'video' ? 'gallery' : 'video');
-      setIsChangingChannel(false);
-    }, 1000);
-  };
+  }, [isInView]);
 
   const adjustVolume = (delta: number) => {
     setVolume(prev => {
@@ -105,76 +93,54 @@ export default function TvSection() {
             {/* SCREEN AREA - Quality Improved */}
             <div className="relative w-full h-full overflow-hidden rounded-lg bg-black">
 
-              {/* Startup Animation */}
-              <AnimatePresence mode="wait">
-                {isChangingChannel && (
-                  <motion.div
-                    key="static"
-                    initial={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    className="absolute inset-0 z-40 tv-static"
-                  />
-                )}
-              </AnimatePresence>
-
               {/* CONTENT - FULL COLOR & BEST QUALITY */}
               <div className="absolute inset-0 z-10 flex flex-col p-0 bg-[#000] overflow-hidden">
 
-                {mode === 'video' ? (
-                  <div className="flex-1 w-full h-full relative group">
-                    {videoUrl ? (
-                      <video
-                        ref={videoRef}
-                        src={videoUrl}
-                        className="w-full h-full object-contain"
-                        loop
-                        playsInline
-                        muted={volume === 0}
-                      />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center bg-black">
-                         <span className="font-mono text-xs text-white/40 uppercase animate-pulse">Cargando Señal...</span>
-                      </div>
-                    )}
-                  </div>
-                ) : (
-                  <div className="flex-1 grid grid-cols-2 md:grid-cols-3 gap-1 p-1 items-center bg-black overflow-y-auto">
-                    {images.length > 0 ? (
-                      images.map((img, i) => (
-                        <motion.div
-                          key={img.id}
-                          initial={{ opacity: 0 }}
-                          animate={{ opacity: 1 }}
-                          transition={{ delay: i * 0.05 }}
-                          className="aspect-square relative group"
-                        >
-                          <Image
-                            src={img.url}
-                            alt={img.titulo || 'Gallery'}
-                            fill
-                            className="object-cover transition-transform group-hover:scale-105"
-                            sizes="(max-width: 768px) 50vw, 33vw"
-                          />
-                        </motion.div>
-                      ))
-                    ) : (
-                      <div className="col-span-3 h-full flex items-center justify-center">
-                         <span className="font-mono text-xs text-white/20 uppercase">Sin Fotos</span>
-                      </div>
-                    )}
-                  </div>
-                )}
+                {/* TOP 60% - VIDEO */}
+                <div className="h-[60%] w-full relative group bg-black border-b border-white/20">
+                  {videoUrl ? (
+                    <video
+                      ref={videoRef}
+                      src={videoUrl}
+                      className="w-full h-full object-cover"
+                      loop
+                      playsInline
+                      muted={volume === 0}
+                    />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center">
+                        <span className="font-mono text-xs text-white/40 uppercase animate-pulse">Cargando Señal...</span>
+                    </div>
+                  )}
+                </div>
 
-                {/* SMALL GALLERY FOOTER (Mode Video) */}
-                {mode === 'video' && images.length > 0 && (
-                  <div className="h-20 mt-4 flex justify-center gap-2">
-                    {images.slice(0, 4).map((img, i) => (
-                      <div key={i} className="h-full aspect-video relative border border-white/10 opacity-50 grayscale">
-                        <Image src={img.url} alt={`Thumb ${i}`} fill className="object-cover" />
-                      </div>
-                    ))}
-                  </div>
-                )}
+                {/* BOTTOM 40% - IMAGE COLLAGE */}
+                <div className="h-[40%] w-full grid grid-cols-2 md:grid-cols-4 gap-1 p-1 bg-[#1a1a1a]">
+                  {images.length > 0 ? (
+                    images.map((img, i) => (
+                      <motion.div
+                        key={img.id}
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: i * 0.1 }}
+                        className="relative h-full w-full group overflow-hidden"
+                      >
+                        <Image
+                          src={img.url}
+                          alt={img.titulo || 'Gallery'}
+                          fill
+                          className="object-cover transition-transform duration-500 group-hover:scale-110"
+                          sizes="(max-width: 768px) 50vw, 25vw"
+                        />
+                        <div className="absolute inset-0 bg-neon-green/0 group-hover:bg-neon-green/10 transition-colors" />
+                      </motion.div>
+                    ))
+                  ) : (
+                    <div className="col-span-full h-full flex items-center justify-center">
+                        <span className="font-mono text-[10px] text-white/20 uppercase">Esperando contenido...</span>
+                    </div>
+                  )}
+                </div>
 
                 {/* VOLUME UI */}
                 <AnimatePresence>
@@ -208,13 +174,15 @@ export default function TvSection() {
             </div>
 
             <div className="flex flex-col gap-6">
-              {/* MODE BUTTON */}
-              <button
-                onClick={handleChannelChange}
-                className="btn-tape py-3 text-xs w-full"
-              >
-                {mode === 'video' ? 'VER FOTOS' : 'VER VIDEO'}
-              </button>
+              {/* STATUS INDICATOR */}
+              <div className="flex items-center justify-between px-2">
+                <span className="font-mono text-[10px] text-neon-green">LIVE</span>
+                <div className="flex gap-1">
+                  <div className="w-1.5 h-1.5 bg-neon-green rounded-full animate-pulse" />
+                  <div className="w-1.5 h-1.5 bg-hot-pink rounded-full animate-pulse delay-75" />
+                  <div className="w-1.5 h-1.5 bg-neon-orange rounded-full animate-pulse delay-150" />
+                </div>
+              </div>
 
               {/* VOLUME BUTTONS */}
               <div className="flex flex-col gap-2">
