@@ -4,6 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, useInView, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { createClient } from '@/lib/supabase/client';
+import { Volume2, VolumeX, Play } from 'lucide-react';
 import { Galeria } from '@/types/database';
 
 export default function TvSection() {
@@ -11,6 +12,8 @@ export default function TvSection() {
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
   const [displayMode, setDisplayMode] = useState<'video' | 'photo'>('video');
   const [showVolume, setShowVolume] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [isPlaying, setIsPlaying] = useState(true);
   const volumeTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
   const [videoUrls, setVideoUrls] = useState<string[]>([]);
@@ -49,12 +52,32 @@ export default function TvSection() {
   useEffect(() => {
     if (videoRef.current) {
       if (isInView) {
-        videoRef.current.play().catch(e => console.error("Auto-play blocked:", e));
+        if (isPlaying) {
+          videoRef.current.play().catch(e => console.error("Auto-play blocked:", e));
+        }
+        videoRef.current.muted = isMuted;
+        videoRef.current.volume = 1.0;
       } else {
         videoRef.current.pause();
       }
     }
-  }, [isInView, currentVideoIndex]);
+  }, [isInView, currentVideoIndex, isMuted, isPlaying]);
+
+  const toggleMute = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsMuted(!isMuted);
+  };
+
+  const togglePlay = () => {
+    if (videoRef.current) {
+      if (isPlaying) {
+        videoRef.current.pause();
+      } else {
+        videoRef.current.play().catch(e => console.error("Play blocked:", e));
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
 
   const handleChannelChange = (direction: 'next' | 'prev') => {
     setDisplayMode('video');
@@ -115,7 +138,8 @@ export default function TvSection() {
                       initial={{ opacity: 0 }}
                       animate={{ opacity: 1 }}
                       exit={{ opacity: 0 }}
-                      className="w-full h-full"
+                      className="w-full h-full cursor-pointer relative"
+                      onClick={togglePlay}
                     >
                       {videoUrls.length > 0 ? (
                         <video
@@ -125,7 +149,7 @@ export default function TvSection() {
                           loop
                           playsInline
                           autoPlay
-                          muted
+                          muted={isMuted}
                         />
                       ) : (
                         <div className="w-full h-full flex items-center justify-center">
@@ -133,10 +157,35 @@ export default function TvSection() {
                         </div>
                       )}
 
-                      {/* Channel Overlay */}
-                      <div className="absolute top-4 left-4 z-20 bg-black/80 text-neon-green px-2 py-1 font-mono text-xs border border-neon-green">
-                        CH {currentVideoIndex + 1}
+                      {/* Video Controls Overlays */}
+                      <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                        <AnimatePresence>
+                          {!isPlaying && (
+                            <motion.div
+                              initial={{ opacity: 0, scale: 0.5 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              exit={{ opacity: 0, scale: 0.5 }}
+                              className="bg-black/40 p-4 rounded-full"
+                            >
+                              <Play size={40} className="text-white fill-white" />
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
+
+                      {/* Channel Overlay */}
+                      <div className="absolute top-4 left-4 z-20 bg-black/80 text-neon-green px-2 py-1 font-mono text-xs border border-neon-green flex items-center gap-2">
+                        <span>CH {currentVideoIndex + 1}</span>
+                        {!isPlaying && <span className="text-[8px] animate-pulse">PAUSED</span>}
+                      </div>
+
+                      {/* Mute Button */}
+                      <button
+                        onClick={toggleMute}
+                        className="absolute bottom-4 right-4 z-20 p-2 bg-black/60 border border-white/20 hover:bg-neon-green hover:text-black transition-all rounded-sm pointer-events-auto"
+                      >
+                        {isMuted ? <VolumeX size={16} /> : <Volume2 size={16} />}
+                      </button>
                     </motion.div>
                   ) : (
                     <motion.div
