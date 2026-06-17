@@ -1,8 +1,9 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
+import { motion } from 'framer-motion';
 import { useDropzone } from 'react-dropzone';
-import { uploadToCloudinary, deleteFromCloudinary } from '@/app/auth/actions/cloudinary';
+import { getCloudinarySignature, saveToSupabase, deleteFromCloudinary } from '@/app/auth/actions/cloudinary';
 import { createClient } from '@/lib/supabase/client';
 import { Upload, Trash2, FileVideo, FileImage, Loader2 } from 'lucide-react';
 import Image from 'next/image';
@@ -11,6 +12,7 @@ import { Galeria } from '@/types/database';
 export default function GaleriaTab() {
   const [items, setItems] = useState<Galeria[]>([]);
   const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const supabase = createClient();
 
   const fetchMedia = useCallback(async () => {
@@ -24,17 +26,58 @@ export default function GaleriaTab() {
 
   const onDrop = useCallback(async (acceptedFiles: File[]) => {
     setIsUploading(true);
+    setUploadProgress(0);
+
     for (const file of acceptedFiles) {
-      const formData = new FormData();
-      formData.append('file', file);
       try {
-        await uploadToCloudinary(formData);
+        const { signature, timestamp, api_key, cloud_name } = await getCloudinarySignature();
+
+        await new Promise<void>((resolve, reject) => {
+          const xhr = new XMLHttpRequest();
+          const formData = new FormData();
+
+          formData.append('file', file);
+          formData.append('signature', signature);
+          formData.append('timestamp', timestamp.toString());
+          formData.append('api_key', api_key);
+          formData.append('folder', 'travesia-club');
+
+          xhr.open('POST', `https://api.cloudinary.com/v1_1/${cloud_name}/auto/upload`, true);
+
+          xhr.upload.onprogress = (e) => {
+            if (e.lengthComputable) {
+              const percent = Math.round((e.loaded / e.total) * 100);
+              setUploadProgress(percent);
+            }
+          };
+
+          xhr.onload = async () => {
+            if (xhr.status === 200) {
+              const response = JSON.parse(xhr.responseText);
+              await saveToSupabase({
+                url: response.secure_url,
+                public_id: response.public_id,
+                tipo: response.resource_type === 'video' ? 'video' : 'foto',
+                titulo: file.name,
+              });
+              resolve();
+            } else {
+              reject(new Error(`Upload failed with status ${xhr.status}`));
+            }
+          };
+
+          xhr.onerror = () => reject(new Error('XHR Network Error'));
+          xhr.send(formData);
+        });
+
       } catch (err) {
         console.error('Error uploading:', err);
         alert('Error al subir: ' + (err instanceof Error ? err.message : String(err)));
       }
     }
+
     setIsUploading(false);
+    setUploadProgress(0);
     fetchMedia();
   }, [fetchMedia]);
 
@@ -74,10 +117,17 @@ export default function GaleriaTab() {
       >
         <input {...getInputProps()} />
         {isUploading ? (
-          <>
+          <div className="w-full max-w-md flex flex-col items-center gap-4">
             <Loader2 size={48} className="animate-spin text-neon-green" />
-            <p className="font-anton text-2xl uppercase">Subiendo archivos...</p>
-          </>
+            <div className="w-full bg-white/10 h-2 rounded-full overflow-hidden">
+              <motion.div
+                initial={{ width: 0 }}
+                animate={{ width: `${uploadProgress}%` }}
+                className="h-full bg-neon-green"
+              />
+            </div>
+            <p className="font-anton text-2xl uppercase">Subiendo ({uploadProgress}%)</p>
+          </div>
         ) : (
           <>
             <Upload size={48} className="text-white/20" />

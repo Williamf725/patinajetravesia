@@ -20,41 +20,41 @@ async function checkAdmin() {
   }
 }
 
-export async function uploadToCloudinary(formData: FormData) {
+export async function getCloudinarySignature() {
   await checkAdmin()
 
-  const file = formData.get('file') as File
-  if (!file) throw new Error('No file provided')
+  const timestamp = Math.round(new Date().getTime() / 1000)
+  const signature = cloudinary.utils.api_sign_request(
+    {
+      timestamp,
+      folder: 'travesia-club',
+    },
+    process.env.CLOUDINARY_API_SECRET!
+  )
 
-  const arrayBuffer = await file.arrayBuffer()
-  const buffer = Buffer.from(arrayBuffer)
+  return {
+    signature,
+    timestamp,
+    api_key: process.env.CLOUDINARY_API_KEY!,
+    cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME!,
+  }
+}
 
-  return new Promise((resolve, reject) => {
-    cloudinary.uploader.upload_stream(
-      {
-        resource_type: 'auto',
-        folder: 'travesia-club',
-      },
-      async (error, result) => {
-        if (error) return reject(error)
-        if (!result) return reject(new Error('Upload failed'))
+export async function saveToSupabase(data: {
+  url: string;
+  public_id: string;
+  tipo: 'foto' | 'video';
+  titulo: string;
+}) {
+  await checkAdmin()
 
-        const supabase = await createClient()
-        const { error: dbError } = await supabase.from('galeria').insert({
-          url: result.secure_url,
-          public_id: result.public_id,
-          tipo: result.resource_type === 'video' ? 'video' : 'foto',
-          titulo: file.name,
-        })
+  const supabase = await createClient()
+  const { error: dbError } = await supabase.from('galeria').insert(data)
 
-        if (dbError) return reject(dbError)
+  if (dbError) throw dbError
 
-        revalidatePath('/dashboard')
-        revalidatePath('/')
-        resolve(result)
-      }
-    ).end(buffer)
-  })
+  revalidatePath('/dashboard')
+  revalidatePath('/')
 }
 
 export async function deleteFromCloudinary(publicId: string, id: string) {
