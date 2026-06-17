@@ -57,7 +57,7 @@ export default function Navbar() {
     }
   };
 
-  const isAdmin = user?.email === ADMIN_EMAIL;
+  const isAdmin = user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
 
   return (
     <>
@@ -82,21 +82,22 @@ export default function Navbar() {
           {!loading && (
             <>
               {user ? (
-                isAdmin ? (
-                  <Link
-                    href="/admin"
-                    className="btn-tape text-[10px] md:text-xs tracking-widest px-4 py-2"
-                  >
-                    PANEL CONTROL
-                  </Link>
-                ) : (
+                <div className="flex items-center gap-3">
+                  {isAdmin && (
+                    <Link
+                      href="/admin"
+                      className="btn-tape text-[10px] md:text-xs tracking-widest px-4 py-2"
+                    >
+                      PANEL CONTROL
+                    </Link>
+                  )}
                   <button
                     onClick={() => supabase.auth.signOut()}
-                    className="nav-link text-[10px] md:text-xs tracking-widest uppercase border border-white/20 px-4 py-2"
+                    className="nav-link text-[10px] md:text-xs tracking-widest uppercase border border-white/20 px-4 py-2 hover:opacity-70 transition-opacity"
                   >
                     CERRAR SESIÓN
                   </button>
-                )
+                </div>
               ) : (
                 <button
                   onClick={() => setIsModalOpen(true)}
