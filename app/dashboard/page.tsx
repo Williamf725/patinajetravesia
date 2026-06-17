@@ -10,7 +10,7 @@ import GaleriaTab from '@/components/dashboard/GaleriaTab';
 import { Users, CreditCard, Image as ImageIcon, LogOut } from 'lucide-react';
 import { User } from '@supabase/supabase-js';
 
-const ADMIN_EMAIL = 'patinajetravesia@gmail.com';
+const ADMIN_EMAIL = 'clubdepatinajetravesia@gmail.com';
 
 type Tab = 'asistencia' | 'pagos' | 'galeria';
 

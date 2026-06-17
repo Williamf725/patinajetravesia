@@ -74,11 +74,11 @@ ALTER TABLE public.login_logs ENABLE ROW LEVEL SECURITY;
 -- Políticas simplificadas para el Admin (Email específico)
 -- En una app real, usaríamos roles o perfiles, pero aquí validamos por el email conocido.
 
-CREATE POLICY "Admin full access on alumnos" ON public.alumnos FOR ALL USING (auth.jwt() ->> 'email' = 'patinajetravesia@gmail.com');
-CREATE POLICY "Admin full access on asistencia" ON public.asistencia FOR ALL USING (auth.jwt() ->> 'email' = 'patinajetravesia@gmail.com');
-CREATE POLICY "Admin full access on pagos" ON public.pagos FOR ALL USING (auth.jwt() ->> 'email' = 'patinajetravesia@gmail.com');
-CREATE POLICY "Admin full access on galeria" ON public.galeria FOR ALL USING (auth.jwt() ->> 'email' = 'patinajetravesia@gmail.com');
-CREATE POLICY "Admin full access on login_logs" ON public.login_logs FOR ALL USING (auth.jwt() ->> 'email' = 'patinajetravesia@gmail.com');
+CREATE POLICY "Admin full access on alumnos" ON public.alumnos FOR ALL USING (auth.jwt() ->> 'email' = 'clubdepatinajetravesia@gmail.com');
+CREATE POLICY "Admin full access on asistencia" ON public.asistencia FOR ALL USING (auth.jwt() ->> 'email' = 'clubdepatinajetravesia@gmail.com');
+CREATE POLICY "Admin full access on pagos" ON public.pagos FOR ALL USING (auth.jwt() ->> 'email' = 'clubdepatinajetravesia@gmail.com');
+CREATE POLICY "Admin full access on galeria" ON public.galeria FOR ALL USING (auth.jwt() ->> 'email' = 'clubdepatinajetravesia@gmail.com');
+CREATE POLICY "Admin full access on login_logs" ON public.login_logs FOR ALL USING (auth.jwt() ->> 'email' = 'clubdepatinajetravesia@gmail.com');
 
 -- Permitir lectura pública de galería para el TvSection
 CREATE POLICY "Public read access on galeria" ON public.galeria FOR SELECT USING (true);

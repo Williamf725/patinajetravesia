@@ -6,7 +6,7 @@ import { useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { User } from '@supabase/supabase-js';
 
-const ADMIN_EMAIL = 'patinajetravesia@gmail.com';
+const ADMIN_EMAIL = 'clubdepatinajetravesia@gmail.com';
 
 export default function Navbar() {
   const [user, setUser] = useState<User | null>(null);

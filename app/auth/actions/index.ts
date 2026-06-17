@@ -5,7 +5,7 @@ import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import { headers } from 'next/headers'
 
-const ADMIN_EMAIL = 'patinajetravesia@gmail.com'
+const ADMIN_EMAIL = 'clubdepatinajetravesia@gmail.com'
 
 export async function login(formData: FormData) {
   const supabase = await createClient()

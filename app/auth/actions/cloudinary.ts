@@ -10,7 +10,7 @@ cloudinary.config({
   api_secret: process.env.CLOUDINARY_API_SECRET,
 })
 
-const ADMIN_EMAIL = 'patinajetravesia@gmail.com'
+const ADMIN_EMAIL = 'clubdepatinajetravesia@gmail.com'
 
 async function checkAdmin() {
   const supabase = await createClient()

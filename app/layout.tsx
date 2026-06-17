@@ -3,6 +3,7 @@ import { Anton, Space_Grotesk, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import Background from "@/components/Background";
 import Navbar from "@/components/Navbar";
+import Footer from "@/components/Footer";
 import PageTransition from "@/components/PageTransition";
 import CustomCursor from "@/components/CustomCursor";
 
@@ -46,6 +47,7 @@ export default function RootLayout({
             {children}
           </PageTransition>
         </main>
+        <Footer />
       </body>
     </html>
   );
