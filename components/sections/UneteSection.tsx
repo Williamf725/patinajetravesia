@@ -30,7 +30,7 @@ export default function UneteSection() {
 
           <div className="flex justify-center">
             <motion.a
-              href="https://wa.me/573202027777?text=Hola,%20quiero%20unirme%20al%20Club%20de%20Patinaje%20Travesía"
+              href="https://wa.me/573222508676?text=Hola,%20quiero%20unirme%20al%20Club%20de%20Patinaje%20Travesía"
               target="_blank"
               rel="noopener noreferrer"
               whileHover={{ scale: 1.05, rotate: -1 }}

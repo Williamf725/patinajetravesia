@@ -30,7 +30,7 @@ export default function Home() {
           transition={{ duration: 0.5, delay: 0.6 }}
         >
           <a
-            href="https://wa.me/573202027777?text=Hola,%20quiero%20unirme%20al%20Club%20de%20Patinaje%20Travesía"
+            href="https://wa.me/573222508676?text=Hola,%20quiero%20unirme%20al%20Club%20de%20Patinaje%20Travesía"
             target="_blank"
             rel="noopener noreferrer"
             className="btn-tape inline-block text-base md:text-xl mt-2 px-6 py-2.5"
