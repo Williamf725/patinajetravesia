@@ -83,12 +83,19 @@ export default function Navbar() {
             <>
               {user ? (
                 <div className="flex items-center gap-3">
-                  {isAdmin && (
+                  {isAdmin ? (
                     <Link
-                      href="/admin"
+                      href="/dashboard"
                       className="btn-tape text-[10px] md:text-xs tracking-widest px-4 py-2"
                     >
                       PANEL CONTROL
+                    </Link>
+                  ) : (
+                    <Link
+                      href="/portal"
+                      className="btn-tape text-[10px] md:text-xs tracking-widest px-4 py-2"
+                    >
+                      MI PORTAL
                     </Link>
                   )}
                   <button

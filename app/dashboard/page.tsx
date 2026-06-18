@@ -7,15 +7,16 @@ import { useRouter } from 'next/navigation';
 import AsistenciaTab from '@/components/dashboard/AsistenciaTab';
 import PagosTab from '@/components/dashboard/PagosTab';
 import GaleriaTab from '@/components/dashboard/GaleriaTab';
-import { Users, CreditCard, Image as ImageIcon, LogOut } from 'lucide-react';
+import InscripcionesTab from '@/components/dashboard/InscripcionesTab';
+import { Users, CreditCard, Image as ImageIcon, LogOut, ClipboardList } from 'lucide-react';
 import { User } from '@supabase/supabase-js';
 
 const ADMIN_EMAIL = 'clubdepatinajetravesia@gmail.com';
 
-type Tab = 'asistencia' | 'pagos' | 'galeria';
+type Tab = 'asistencia' | 'pagos' | 'galeria' | 'inscripciones';
 
 export default function DashboardPage() {
-  const [activeTab, setActiveTab] = useState<Tab>('asistencia');
+  const [activeTab, setActiveTab] = useState<Tab>('inscripciones');
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const supabase = createClient();
@@ -86,6 +87,7 @@ export default function DashboardPage() {
           {/* Sidebar Navigation */}
           <aside className="flex flex-col gap-2">
             {[
+              { id: 'inscripciones', label: 'Inscripciones', icon: ClipboardList },
               { id: 'asistencia', label: 'Asistencia', icon: Users },
               { id: 'pagos', label: 'Planilla Pagos', icon: CreditCard },
               { id: 'galeria', label: 'Galería Media', icon: ImageIcon },
@@ -116,6 +118,7 @@ export default function DashboardPage() {
                 exit={{ opacity: 0, x: -20 }}
                 transition={{ duration: 0.3 }}
               >
+                {activeTab === 'inscripciones' && <InscripcionesTab />}
                 {activeTab === 'asistencia' && <AsistenciaTab />}
                 {activeTab === 'pagos' && <PagosTab />}
                 {activeTab === 'galeria' && <GaleriaTab />}

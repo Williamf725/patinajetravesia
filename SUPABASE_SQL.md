@@ -10,7 +10,37 @@ CREATE TABLE IF NOT EXISTS public.alumnos (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
     numero_alumno INTEGER UNIQUE NOT NULL,
     nombre_completo TEXT NOT NULL,
+    email TEXT UNIQUE, -- Email para vincular con auth.users
     created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Tabla de Planes
+CREATE TABLE IF NOT EXISTS public.planes (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    nombre TEXT NOT NULL,
+    precio NUMERIC NOT NULL,
+    clases_incluidas INTEGER NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Insertar planes iniciales
+INSERT INTO public.planes (nombre, precio, clases_incluidas) VALUES
+('Clase Individual', 12000, 1),
+('Mensualidad Básica', 40000, 4),
+('Mensualidad Completa', 70000, 8)
+ON CONFLICT DO NOTHING;
+
+-- Tabla de Inscripciones (Planes seleccionados por alumnos)
+CREATE TABLE IF NOT EXISTS public.inscripciones (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    alumno_id UUID NOT NULL REFERENCES public.alumnos(id) ON DELETE CASCADE,
+    plan_id UUID NOT NULL REFERENCES public.planes(id),
+    mes TEXT NOT NULL,
+    anio INTEGER NOT NULL,
+    estado TEXT DEFAULT 'pendiente' CHECK (estado IN ('pendiente', 'aprobado', 'rechazado')),
+    fecha_confirmacion TIMESTAMPTZ,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    UNIQUE(alumno_id, mes, anio)
 );
 
 -- Tabla de Asistencia
@@ -79,6 +109,26 @@ CREATE POLICY "Admin full access on asistencia" ON public.asistencia FOR ALL USI
 CREATE POLICY "Admin full access on pagos" ON public.pagos FOR ALL USING (auth.jwt() ->> 'email' = 'clubdepatinajetravesia@gmail.com');
 CREATE POLICY "Admin full access on galeria" ON public.galeria FOR ALL USING (auth.jwt() ->> 'email' = 'clubdepatinajetravesia@gmail.com');
 CREATE POLICY "Admin full access on login_logs" ON public.login_logs FOR ALL USING (auth.jwt() ->> 'email' = 'clubdepatinajetravesia@gmail.com');
+CREATE POLICY "Admin full access on planes" ON public.planes FOR ALL USING (auth.jwt() ->> 'email' = 'clubdepatinajetravesia@gmail.com');
+CREATE POLICY "Admin full access on inscripciones" ON public.inscripciones FOR ALL USING (auth.jwt() ->> 'email' = 'clubdepatinajetravesia@gmail.com');
+
+-- Políticas para Alumnos (Portal)
+CREATE POLICY "Alumnos can read their own data" ON public.alumnos FOR SELECT USING (auth.jwt() ->> 'email' = email);
+CREATE POLICY "Alumnos can read all attendance" ON public.asistencia FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "Alumnos can read attendance detail" ON public.alumnos FOR SELECT USING (auth.role() = 'authenticated'); -- Necesario para nombres
+CREATE POLICY "Alumnos can read planes" ON public.planes FOR SELECT USING (auth.role() = 'authenticated');
+CREATE POLICY "Alumnos can select their plan" ON public.inscripciones FOR INSERT WITH CHECK (
+    EXISTS (
+        SELECT 1 FROM public.alumnos
+        WHERE id = alumno_id AND email = auth.jwt() ->> 'email'
+    )
+);
+CREATE POLICY "Alumnos can read their own inscripciones" ON public.inscripciones FOR SELECT USING (
+    EXISTS (
+        SELECT 1 FROM public.alumnos
+        WHERE id = alumno_id AND email = auth.jwt() ->> 'email'
+    )
+);
 
 -- Permitir lectura pública de galería para el TvSection
 CREATE POLICY "Public read access on galeria" ON public.galeria FOR SELECT USING (true);
