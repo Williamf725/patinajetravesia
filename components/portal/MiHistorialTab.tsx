@@ -35,6 +35,7 @@ export default function MiHistorialTab({ historial }: Props) {
               <th className="p-4 border-r border-white/20">Mes / Año</th>
               <th className="p-4 border-r border-white/20">Plan</th>
               <th className="p-4 border-r border-white/20">Precio</th>
+              <th className="p-4 border-r border-white/20 text-center">Clases (I/U/R)</th>
               <th className="p-4 border-r border-white/20">Estado</th>
               <th className="p-4">Fecha Inscripción</th>
             </tr>
@@ -42,7 +43,7 @@ export default function MiHistorialTab({ historial }: Props) {
           <tbody>
             {historial.length === 0 ? (
               <tr>
-                <td colSpan={5} className="p-10 text-center text-white/20">
+                <td colSpan={6} className="p-10 text-center text-white/20">
                   Aún no tienes inscripciones registradas
                 </td>
               </tr>
@@ -57,6 +58,9 @@ export default function MiHistorialTab({ historial }: Props) {
                   </td>
                   <td className="p-4 border-r border-white/20">
                     ${item.plan?.precio.toLocaleString()}
+                  </td>
+                  <td className="p-4 border-r border-white/20 text-center font-mono">
+                    {item.plan?.clases_incluidas} / {item.clases_usadas || 0} / {Math.max(0, (item.plan?.clases_incluidas || 0) - (item.clases_usadas || 0))}
                   </td>
                   <td className="p-4 border-r border-white/20">
                     {getStatusBadge(item.estado)}

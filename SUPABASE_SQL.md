@@ -8,9 +8,12 @@ Ejecuta este código en el editor SQL de Supabase para crear las tablas necesari
 -- Tabla de Alumnos
 CREATE TABLE IF NOT EXISTS public.alumnos (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    numero_alumno INTEGER UNIQUE NOT NULL,
+    numero_alumno SERIAL UNIQUE NOT NULL, -- Cambiado a serial para auto-incremento
+    nombre TEXT,
+    apellido TEXT,
     nombre_completo TEXT NOT NULL,
-    email TEXT UNIQUE, -- Email para vincular con auth.users
+    email TEXT UNIQUE,
+    activo BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -38,9 +41,19 @@ CREATE TABLE IF NOT EXISTS public.inscripciones (
     mes TEXT NOT NULL,
     anio INTEGER NOT NULL,
     estado TEXT DEFAULT 'pendiente' CHECK (estado IN ('pendiente', 'aprobado', 'rechazado')),
+    clases_usadas INTEGER DEFAULT 0,
     fecha_confirmacion TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT now(),
     UNIQUE(alumno_id, mes, anio)
+);
+
+-- Tabla de Notificaciones
+CREATE TABLE IF NOT EXISTS public.notificaciones (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    alumno_id UUID NOT NULL REFERENCES public.alumnos(id) ON DELETE CASCADE,
+    tipo TEXT NOT NULL, -- 'plan_escogido', 'plan_por_acabar', etc.
+    metadata JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT now()
 );
 
 -- Tabla de Asistencia

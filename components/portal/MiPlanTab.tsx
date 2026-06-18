@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Plan, Inscripcion } from '@/types/database';
 import { selectPlan } from '@/app/auth/actions/portal';
-import { CheckCircle2, Clock, XCircle, Info } from 'lucide-react';
+import { CheckCircle2, Clock, XCircle, Info, AlertTriangle } from 'lucide-react';
 
 interface Props {
   alumnoId: string;
@@ -59,32 +59,51 @@ export default function MiPlanTab({ alumnoId, planes, inscripcionActual }: Props
 
               {inscripcionActual.estado === 'pendiente' && (
                 <div className="p-4 bg-yellow-400/10 border-l-4 border-yellow-400 text-yellow-400 font-mono text-sm uppercase">
-                  Esperando confirmación de pago por el administrador
+                  Tu pago está pendiente de confirmación. Págalo en persona al entrenador.
                 </div>
               )}
 
               {inscripcionActual.estado === 'aprobado' && (
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
-                  <div className="bg-black/40 p-3 border border-white/10">
-                    <p className="text-[9px] text-white/40 uppercase">Clases Plan</p>
-                    <p className="font-anton text-2xl">{inscripcionActual.plan?.clases_incluidas}</p>
+                <div className="space-y-6">
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+                    <div className="bg-black/40 p-3 border border-white/10">
+                      <p className="text-[9px] text-white/40 uppercase">Clases Plan</p>
+                      <p className="font-anton text-2xl">{inscripcionActual.plan?.clases_incluidas}</p>
+                    </div>
+                    <div className="bg-black/40 p-3 border border-white/10">
+                      <p className="text-[9px] text-white/40 uppercase">Clases Usadas</p>
+                      <p className="font-anton text-2xl text-yellow-400">{inscripcionActual.clases_usadas}</p>
+                    </div>
+                    <div className="bg-black/40 p-3 border border-white/10">
+                      <p className="text-[9px] text-white/40 uppercase">Restantes</p>
+                      <p className="font-anton text-2xl text-neon-green">
+                        {Math.max(0, (inscripcionActual.plan?.clases_incluidas || 0) - (inscripcionActual.clases_usadas || 0))}
+                      </p>
+                    </div>
+                    <div className="bg-black/40 p-3 border border-white/10">
+                      <p className="text-[9px] text-white/40 uppercase">Total Pagado</p>
+                      <p className="font-anton text-2xl text-neon-green">
+                        ${inscripcionActual.plan?.precio.toLocaleString()}
+                      </p>
+                    </div>
                   </div>
-                  <div className="bg-black/40 p-3 border border-white/10">
-                    <p className="text-[9px] text-white/40 uppercase">Clases Usadas</p>
-                    <p className="font-anton text-2xl text-yellow-400">{inscripcionActual.clases_usadas}</p>
+
+                  {/* Progress Bar */}
+                  <div className="w-full bg-white/10 h-3 rounded-full overflow-hidden">
+                    <motion.div
+                      initial={{ width: 0 }}
+                      animate={{ width: `${Math.min(100, ((inscripcionActual.clases_usadas || 0) / (inscripcionActual.plan?.clases_incluidas || 1)) * 100)}%` }}
+                      className="h-full bg-neon-green"
+                    />
                   </div>
-                  <div className="bg-black/40 p-3 border border-white/10">
-                    <p className="text-[9px] text-white/40 uppercase">Restantes</p>
-                    <p className="font-anton text-2xl text-neon-green">
-                      {Math.max(0, (inscripcionActual.plan?.clases_incluidas || 0) - (inscripcionActual.clases_usadas || 0))}
-                    </p>
-                  </div>
-                  <div className="bg-black/40 p-3 border border-white/10">
-                    <p className="text-[9px] text-white/40 uppercase">Total Pagado</p>
-                    <p className="font-anton text-2xl text-neon-green">
-                      ${inscripcionActual.plan?.precio.toLocaleString()}
-                    </p>
-                  </div>
+
+                  {/* Class Alert */}
+                  {((inscripcionActual.plan?.clases_incluidas || 0) - (inscripcionActual.clases_usadas || 0)) === 1 && (
+                    <div className="p-4 bg-orange-500/20 border-l-4 border-orange-500 text-orange-500 flex items-center gap-3 animate-pulse">
+                      <AlertTriangle />
+                      <span className="font-anton uppercase text-sm md:text-base">⚠️ Te queda solo 1 clase. ¡Renueva tu plan pronto!</span>
+                    </div>
+                  )}
                 </div>
               )}
 
@@ -127,7 +146,7 @@ export default function MiPlanTab({ alumnoId, planes, inscripcionActual }: Props
                   </div>
                   <ul className="space-y-2 mb-8 font-mono text-[10px] uppercase text-white/60">
                     <li className="flex items-center gap-2">
-                      <span className="text-neon-green">⚡</span> {plan.clases_incluidas} clases incluidas
+                      <span className="text-neon-green">⚡</span> {plan.clases_incluidas} {plan.clases_incluidas === 1 ? 'clase' : 'clases'} al mes
                     </li>
                     <li className="flex items-center gap-2">
                       <span className="text-neon-green">⚡</span> Acceso a todos los horarios

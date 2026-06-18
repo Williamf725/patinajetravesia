@@ -106,12 +106,20 @@ export default function Navbar() {
                   </button>
                 </div>
               ) : (
-                <button
-                  onClick={() => setIsModalOpen(true)}
-                  className="nav-link text-[10px] md:text-xs tracking-widest uppercase border border-white/20 px-4 py-2 hover:bg-white hover:text-black transition-all"
-                >
-                  ACCESO ADMIN
-                </button>
+                <div className="flex items-center gap-3">
+                  <Link
+                    href="/registro"
+                    className="btn-tape text-[10px] md:text-xs tracking-widest px-4 py-2"
+                  >
+                    UNIRSE
+                  </Link>
+                  <button
+                    onClick={() => setIsModalOpen(true)}
+                    className="nav-link text-[10px] md:text-xs tracking-widest uppercase border border-white/20 px-4 py-2 hover:bg-white hover:text-black transition-all"
+                  >
+                    ADMIN
+                  </button>
+                </div>
               )}
             </>
           )}

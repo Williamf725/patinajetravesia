@@ -37,6 +37,21 @@ export default function InscripcionesTab() {
     }
   };
 
+  const handleUpdateClases = async (id: string, current: number) => {
+    const input = prompt('Nuevas clases usadas:', current.toString());
+    if (input === null) return;
+    const val = parseInt(input);
+    if (isNaN(val)) return;
+
+    try {
+      const { updateClasesUsadas } = await import('@/app/auth/actions/admin');
+      await updateClasesUsadas(id, val);
+      fetchInscripciones();
+    } catch {
+      alert('Error al actualizar clases');
+    }
+  };
+
   const filteredItems = items.filter(item => {
     const matchesFilter = filter === 'todos' || item.estado === filter;
     const matchesSearch = item.alumno?.nombre_completo.toLowerCase().includes(search.toLowerCase());
@@ -100,6 +115,7 @@ export default function InscripcionesTab() {
               <th className="p-4 border-r border-white/20">Alumno</th>
               <th className="p-4 border-r border-white/20">Plan</th>
               <th className="p-4 border-r border-white/20">Mes / Año</th>
+              <th className="p-4 border-r border-white/20 text-center">Clases Usadas</th>
               <th className="p-4 border-r border-white/20">Estado</th>
               <th className="p-4 border-r border-white/20">Inscripción</th>
               <th className="p-4">Acciones</th>
@@ -124,6 +140,15 @@ export default function InscripcionesTab() {
                   </td>
                   <td className="p-4 border-r border-white/20 font-bold">
                     {item.mes} {item.anio}
+                  </td>
+                  <td className="p-4 border-r border-white/20 text-center">
+                    <button
+                      onClick={() => handleUpdateClases(item.id, item.clases_usadas || 0)}
+                      className="font-anton text-lg hover:text-neon-green transition-colors border-b border-dashed border-white/20 px-2"
+                    >
+                      {item.clases_usadas || 0}
+                    </button>
+                    <p className="text-[8px] text-white/20 uppercase mt-1">de {item.plan?.clases_incluidas}</p>
                   </td>
                   <td className="p-4 border-r border-white/20">
                     <span className={`px-2 py-1 border ${
