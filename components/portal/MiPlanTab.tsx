@@ -2,24 +2,26 @@
 
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Plan, Inscripcion } from '@/types/database';
+import { Plan, Inscripcion, Alumno } from '@/types/database';
 import { selectPlan } from '@/app/auth/actions/portal';
 import { CheckCircle2, Clock, XCircle, Info, AlertTriangle } from 'lucide-react';
 
 interface Props {
-  alumnoId: string;
+  alumno: Alumno;
   planes: Plan[];
   inscripcionActual: Inscripcion | null;
 }
 
-export default function MiPlanTab({ alumnoId, planes, inscripcionActual }: Props) {
+export default function MiPlanTab({ alumno, planes, inscripcionActual }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSelectPlan = async (planId: string) => {
+  const handleSelectPlan = async (plan: Plan) => {
     if (isSubmitting) return;
     setIsSubmitting(true);
     try {
-      await selectPlan(alumnoId, planId);
+      await selectPlan(alumno.id, plan.id);
+      const msg = `Hola, acabo de escoger el plan *${plan.nombre}* en el portal. Mi nombre es *${alumno.nombre_completo}*.`;
+      window.open(`https://wa.me/573222508676?text=${encodeURIComponent(msg)}`, '_blank');
     } catch (err) {
       alert(err instanceof Error ? err.message : 'Error al seleccionar plan');
     } finally {
@@ -58,8 +60,19 @@ export default function MiPlanTab({ alumnoId, planes, inscripcionActual }: Props
               </p>
 
               {inscripcionActual.estado === 'pendiente' && (
-                <div className="p-4 bg-yellow-400/10 border-l-4 border-yellow-400 text-yellow-400 font-mono text-sm uppercase">
-                  Tu pago está pendiente de confirmación. Págalo en persona al entrenador.
+                <div className="space-y-4">
+                  <div className="p-4 bg-yellow-400/10 border-l-4 border-yellow-400 text-yellow-400 font-mono text-sm uppercase">
+                    Tu pago está pendiente de confirmación. Págalo en persona al entrenador.
+                  </div>
+                  <button
+                    onClick={() => {
+                      const msg = `Hola, mi pago para el plan *${inscripcionActual.plan?.nombre}* está pendiente. Mi nombre es *${alumno.nombre_completo}*.`;
+                      window.open(`https://wa.me/573222508676?text=${encodeURIComponent(msg)}`, '_blank');
+                    }}
+                    className="btn-tape w-full py-3 text-sm"
+                  >
+                    INFORMAR PAGO POR WHATSAPP
+                  </button>
                 </div>
               )}
 
@@ -156,7 +169,7 @@ export default function MiPlanTab({ alumnoId, planes, inscripcionActual }: Props
 
                 <button
                   disabled={isSubmitting}
-                  onClick={() => handleSelectPlan(plan.id)}
+                  onClick={() => handleSelectPlan(plan)}
                   className="btn-tape w-full py-3 font-anton uppercase text-lg disabled:opacity-50"
                 >
                   {isSubmitting ? 'Procesando...' : 'Escoger Plan'}

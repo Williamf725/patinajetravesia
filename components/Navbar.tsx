@@ -83,14 +83,7 @@ export default function Navbar() {
             <>
               {user ? (
                 <div className="flex items-center gap-3">
-                  {isAdmin ? (
-                    <Link
-                      href="/dashboard"
-                      className="btn-tape text-[10px] md:text-xs tracking-widest px-4 py-2"
-                    >
-                      PANEL CONTROL
-                    </Link>
-                  ) : (
+                  {!isAdmin && (
                     <Link
                       href="/portal"
                       className="btn-tape text-[10px] md:text-xs tracking-widest px-4 py-2"
@@ -98,6 +91,14 @@ export default function Navbar() {
                       MI PORTAL
                     </Link>
                   )}
+                  {isAdmin ? (
+                    <Link
+                      href="/dashboard"
+                      className="nav-link text-[10px] md:text-xs tracking-widest uppercase border border-white/20 px-4 py-2 hover:bg-white hover:text-black transition-all"
+                    >
+                      PANEL CONTROL
+                    </Link>
+                  ) : null}
                   <button
                     onClick={() => supabase.auth.signOut()}
                     className="nav-link text-[10px] md:text-xs tracking-widest uppercase border border-white/20 px-4 py-2 hover:opacity-70 transition-opacity"
@@ -107,12 +108,6 @@ export default function Navbar() {
                 </div>
               ) : (
                 <div className="flex items-center gap-3">
-                  <Link
-                    href="/registro"
-                    className="btn-tape text-[10px] md:text-xs tracking-widest px-4 py-2"
-                  >
-                    UNIRSE
-                  </Link>
                   <button
                     onClick={() => setIsModalOpen(true)}
                     className="nav-link text-[10px] md:text-xs tracking-widest uppercase border border-white/20 px-4 py-2 hover:bg-white hover:text-black transition-all"

@@ -18,6 +18,7 @@ export default function InscripcionesTab() {
     const { data } = await supabase
       .from('inscripciones')
       .select('*, alumno:alumnos(*), plan:planes(*)')
+      .order('estado', { ascending: false })
       .order('created_at', { ascending: false });
 
     setItems((data as Inscripcion[]) || []);
@@ -34,21 +35,6 @@ export default function InscripcionesTab() {
       fetchInscripciones();
     } catch (err) {
       alert('Error: ' + (err instanceof Error ? err.message : String(err)));
-    }
-  };
-
-  const handleUpdateClases = async (id: string, current: number) => {
-    const input = prompt('Nuevas clases usadas:', current.toString());
-    if (input === null) return;
-    const val = parseInt(input);
-    if (isNaN(val)) return;
-
-    try {
-      const { updateClasesUsadas } = await import('@/app/auth/actions/admin');
-      await updateClasesUsadas(id, val);
-      fetchInscripciones();
-    } catch {
-      alert('Error al actualizar clases');
     }
   };
 
@@ -75,7 +61,7 @@ export default function InscripcionesTab() {
            </div>
            <div>
              <h2 className="font-anton text-3xl uppercase leading-none">Inscripciones</h2>
-             <p className="font-mono text-[10px] text-white/40 uppercase tracking-[0.3em]">Gestión de Planes y Pagos</p>
+             <p className="font-mono text-[10px] text-white/40 uppercase tracking-[0.3em]">Gestión de Solicitudes</p>
            </div>
         </div>
 
@@ -112,43 +98,42 @@ export default function InscripcionesTab() {
         <table className="w-full font-mono text-[10px] uppercase tracking-tighter text-left">
           <thead>
             <tr className="bg-black border-b-4 border-white">
-              <th className="p-4 border-r border-white/20">Alumno</th>
-              <th className="p-4 border-r border-white/20">Plan</th>
-              <th className="p-4 border-r border-white/20">Mes / Año</th>
-              <th className="p-4 border-r border-white/20 text-center">Clases Usadas</th>
+              <th className="p-4 border-r border-white/20">Nº Alumno</th>
+              <th className="p-4 border-r border-white/20">Nombre Completo</th>
+              <th className="p-4 border-r border-white/20">Email</th>
+              <th className="p-4 border-r border-white/20">Plan Escogido</th>
+              <th className="p-4 border-r border-white/20 text-center">Precio</th>
+              <th className="p-4 border-r border-white/20">Mes</th>
               <th className="p-4 border-r border-white/20">Estado</th>
-              <th className="p-4 border-r border-white/20">Inscripción</th>
+              <th className="p-4 border-r border-white/20">Fecha</th>
               <th className="p-4">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={6} className="p-10 text-center animate-pulse">CARGANDO...</td></tr>
+              <tr><td colSpan={9} className="p-10 text-center animate-pulse">CARGANDO...</td></tr>
             ) : sortedItems.length === 0 ? (
-              <tr><td colSpan={6} className="p-10 text-center text-white/20">NO HAY REGISTROS QUE COINCIDAN</td></tr>
+              <tr><td colSpan={9} className="p-10 text-center text-white/20">NO HAY REGISTROS QUE COINCIDAN</td></tr>
             ) : (
               sortedItems.map((item) => (
                 <tr key={item.id} className={`border-b border-white/10 hover:bg-white/5 transition-colors ${item.estado === 'pendiente' ? 'bg-yellow-400/5' : ''}`}>
-                  <td className="p-4 border-r border-white/20">
-                    <div className="flex flex-col">
-                      <span className="font-anton text-sm">{item.alumno?.nombre_completo}</span>
-                      <span className="text-[8px] text-white/40">{item.alumno?.email}</span>
-                    </div>
+                  <td className="p-4 border-r border-white/20 font-bold text-neon-green">
+                    #{item.alumno?.numero_alumno}
+                  </td>
+                  <td className="p-4 border-r border-white/20 font-anton uppercase">
+                    {item.alumno?.nombre_completo}
+                  </td>
+                  <td className="p-4 border-r border-white/20 text-white/60">
+                    {item.alumno?.email}
                   </td>
                   <td className="p-4 border-r border-white/20">
-                    {item.plan?.nombre} (${item.plan?.precio.toLocaleString()})
+                    {item.plan?.nombre}
                   </td>
-                  <td className="p-4 border-r border-white/20 font-bold">
-                    {item.mes} {item.anio}
+                  <td className="p-4 border-r border-white/20 text-center font-mono text-neon-green">
+                    ${item.plan?.precio.toLocaleString()}
                   </td>
-                  <td className="p-4 border-r border-white/20 text-center">
-                    <button
-                      onClick={() => handleUpdateClases(item.id, item.clases_usadas || 0)}
-                      className="font-anton text-lg hover:text-neon-green transition-colors border-b border-dashed border-white/20 px-2"
-                    >
-                      {item.clases_usadas || 0}
-                    </button>
-                    <p className="text-[8px] text-white/20 uppercase mt-1">de {item.plan?.clases_incluidas}</p>
+                  <td className="p-4 border-r border-white/20 font-bold uppercase">
+                    {item.mes}
                   </td>
                   <td className="p-4 border-r border-white/20">
                     <span className={`px-2 py-1 border ${
@@ -179,7 +164,7 @@ export default function InscripcionesTab() {
                         </button>
                       </div>
                     ) : (
-                      <div className="flex gap-2">
+                      <div className="flex gap-2 items-center">
                          <button
                           onClick={() => handleAction(item.id, 'pendiente')}
                           className="text-white/20 hover:text-white transition-colors"
@@ -188,7 +173,7 @@ export default function InscripcionesTab() {
                           <Filter size={14} />
                         </button>
                         <span className="text-[8px] text-white/20 uppercase">
-                          Confirmado el {item.fecha_confirmacion ? new Date(item.fecha_confirmacion).toLocaleDateString() : '--'}
+                          {item.estado === 'aprobado' ? 'Confirmado' : 'Rechazado'} {item.fecha_confirmacion ? new Date(item.fecha_confirmacion).toLocaleDateString() : ''}
                         </span>
                       </div>
                     )}

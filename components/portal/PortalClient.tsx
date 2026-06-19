@@ -86,7 +86,7 @@ export default function PortalClient({ alumno, planes, inscripcionActual, histor
           >
             {activeTab === 'plan' && (
               <MiPlanTab
-                alumnoId={alumno.id}
+                alumno={alumno}
                 planes={planes}
                 inscripcionActual={inscripcionActual}
               />

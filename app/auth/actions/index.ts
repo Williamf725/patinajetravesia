@@ -6,8 +6,6 @@ import { createClient } from '@/lib/supabase/server'
 import { headers } from 'next/headers'
 import { enviarBienvenida } from '@/lib/email/resend'
 
-const ADMIN_EMAIL = 'clubdepatinajetravesia@gmail.com'
-
 export async function login(formData: FormData) {
   const supabase = await createClient()
 
@@ -15,14 +13,11 @@ export async function login(formData: FormData) {
   const password = formData.get('password') as string
 
   if (!email || !password) {
-     return // Handled client-side now, but for safety
+     return
   }
 
-  // Strict restriction: Only allow the specific admin email
-  if (email.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
-    throw new Error('Acceso Denegado: Usuario no autorizado')
-  }
-
+  // Permitimos login a todos (alumnos y admin)
+  // La protección de rutas se encarga del resto
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
@@ -78,9 +73,10 @@ export async function registrarAlumno(formData: FormData) {
   if (!authData.user) throw new Error('Error al crear usuario')
 
   // 2. Create Alumno Record
+  // La columna numero_alumno se asigna automáticamente (serial) en Supabase
   const { error: alumnoError } = await supabase.from('alumnos').insert({
     nombre,
-    apellido, // Note: Added column request - need to check if schema needs update or if I just use nombre_completo
+    apellido,
     nombre_completo: `${nombre} ${apellido}`,
     email: email.toLowerCase(),
     activo: true,

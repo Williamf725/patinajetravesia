@@ -106,8 +106,8 @@ export default function AsistenciaTab() {
 
   const handleAddAlumno = async (e: React.FormEvent) => {
     e.preventDefault();
+    // La columna numero_alumno se asigna automáticamente (serial) en Supabase
     const { error } = await supabase.from('alumnos').insert({
-      numero_alumno: parseInt(newAlumno.numero),
       nombre_completo: newAlumno.nombre
     });
 
@@ -267,16 +267,6 @@ export default function AsistenciaTab() {
           <div className="bg-[#131313] border-4 border-white p-8 max-w-sm w-full shadow-brutal-lg">
             <h2 className="font-anton text-3xl uppercase mb-6">Nuevo Alumno</h2>
             <form onSubmit={handleAddAlumno} className="flex flex-col gap-4">
-               <div className="flex flex-col gap-1">
-                 <label className="font-mono text-[10px] text-neon-green uppercase tracking-widest">Nº Alumno</label>
-                 <input
-                  type="number"
-                  required
-                  value={newAlumno.numero}
-                  onChange={e => setNewAlumno({...newAlumno, numero: e.target.value})}
-                  className="bg-transparent border-b-2 border-white/20 p-2 outline-none focus:border-neon-green font-mono"
-                 />
-               </div>
                <div className="flex flex-col gap-1">
                  <label className="font-mono text-[10px] text-neon-green uppercase tracking-widest">Nombre Completo</label>
                  <input

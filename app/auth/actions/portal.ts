@@ -30,6 +30,7 @@ export async function selectPlan(alumnoId: string, planId: string) {
   if (!plan || !alumno) throw new Error('Información no encontrada')
 
   // 2. Create Inscripcion
+  // Omitimos numero_alumno — se asume que Supabase maneja ID
   const { error } = await supabase.from('inscripciones').insert({
     alumno_id: alumnoId,
     plan_id: planId,
