@@ -9,12 +9,44 @@ export default function RegistroPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
+  const validateForm = (formData: FormData) => {
+    const nombre = formData.get('nombre') as string;
+    const apellido = formData.get('apellido') as string;
+    const email = formData.get('email') as string;
+    const password = formData.get('password') as string;
+    const confirmPassword = formData.get('confirmPassword') as string;
+
+    if (!nombre.trim() || !apellido.trim()) {
+      return 'El nombre y apellido son obligatorios';
+    }
+
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return 'Ingresa un email válido';
+    }
+
+    if (password.length < 6) {
+      return 'La contraseña debe tener al menos 6 caracteres';
+    }
+
+    if (!/\d/.test(password)) {
+      return 'La contraseña debe incluir al menos un número';
+    }
+
+    if (password !== confirmPassword) {
+      return 'Las contraseñas no coinciden';
+    }
+
+    return null;
+  };
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     const formData = new FormData(e.currentTarget);
 
-    if (formData.get('password') !== formData.get('confirmPassword')) {
-      setError('Las contraseñas no coinciden');
+    const validationError = validateForm(formData);
+    if (validationError) {
+      setError(validationError);
       return;
     }
 
@@ -122,7 +154,11 @@ export default function RegistroPage() {
 
         <div className="mt-8 text-center">
            <p className="font-mono text-[10px] text-white/40 uppercase">
-             ¿YA TIENES CUENTA? <Link href="/" className="text-neon-green hover:underline">INGRESA AQUÍ</Link>
+             {error && error.includes('Ya existe una cuenta') ? (
+               <Link href="/login" className="text-neon-green hover:underline">INICIA SESIÓN AQUÍ</Link>
+             ) : (
+               <>¿YA TIENES CUENTA? <Link href="/login" className="text-neon-green hover:underline">INGRESA AQUÍ</Link></>
+             )}
            </p>
         </div>
       </motion.div>

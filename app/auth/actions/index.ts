@@ -13,18 +13,22 @@ export async function login(formData: FormData) {
   const password = formData.get('password') as string
 
   if (!email || !password) {
-     return
+    throw new Error('Completa todos los campos')
   }
 
-  // Permitimos login a todos (alumnos y admin)
-  // La protección de rutas se encarga del resto
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
     password,
   })
 
   if (error) {
-    throw error
+    if (error.message === 'Invalid login credentials') {
+      throw new Error('Correo o contraseña incorrectos')
+    }
+    if (error.message === 'Email not confirmed') {
+      throw new Error('Debes confirmar tu correo antes de iniciar sesión')
+    }
+    throw new Error('Error al iniciar sesión. Intenta de nuevo')
   }
 
   // Log the login event if log table exists
@@ -54,7 +58,7 @@ export async function registrarAlumno(formData: FormData) {
   const apellido = formData.get('apellido') as string
 
   if (!email || !password || !nombre || !apellido) {
-    throw new Error('Todos los campos son obligatorios')
+    throw new Error('El nombre y apellido son obligatorios')
   }
 
   // 1. Create Auth User
@@ -69,7 +73,12 @@ export async function registrarAlumno(formData: FormData) {
     }
   })
 
-  if (authError) throw authError
+  if (authError) {
+    if (authError.message.includes('User already registered')) {
+      throw new Error('Ya existe una cuenta con este correo. ¿Ya tienes cuenta? Inicia sesión')
+    }
+    throw new Error('Ocurrió un error al crear tu cuenta. Intenta de nuevo')
+  }
   if (!authData.user) throw new Error('Error al crear usuario')
 
   // 2. Create Alumno Record

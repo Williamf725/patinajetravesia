@@ -47,7 +47,13 @@ export default function Navbar() {
     });
 
     if (error) {
-      setError(error.message);
+      if (error.message === 'Invalid login credentials') {
+        setError('Correo o contraseña incorrectos');
+      } else if (error.message === 'Email not confirmed') {
+        setError('Debes confirmar tu correo antes de iniciar sesión');
+      } else {
+        setError('Error al iniciar sesión. Intenta de nuevo');
+      }
       setIsSubmitting(false);
     } else {
       setIsModalOpen(false);
@@ -201,6 +207,16 @@ export default function Navbar() {
                   {isSubmitting ? 'VERIFICANDO...' : 'INGRESAR'}
                 </button>
               </form>
+
+              <div className="mt-8 text-center">
+                 <p className="font-mono text-[10px] text-white/40 uppercase">
+                   {error && error.includes('existe una cuenta') ? (
+                     <Link href="/login" onClick={() => setIsModalOpen(false)} className="text-neon-green hover:underline">INICIA SESIÓN AQUÍ</Link>
+                   ) : (
+                     <>¿NO TIENES CUENTA? <Link href="/registro" onClick={() => setIsModalOpen(false)} className="text-neon-green hover:underline">REGÍSTRATE AQUÍ</Link></>
+                   )}
+                 </p>
+              </div>
             </motion.div>
           </div>
         )}
