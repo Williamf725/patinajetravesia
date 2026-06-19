@@ -103,7 +103,7 @@ export default function InscripcionesTab() {
               <th className="p-4 border-r border-white/20">Email</th>
               <th className="p-4 border-r border-white/20">Plan Escogido</th>
               <th className="p-4 border-r border-white/20 text-center">Precio</th>
-              <th className="p-4 border-r border-white/20">Mes</th>
+              <th className="p-4 border-r border-white/20">Mes / Anio</th>
               <th className="p-4 border-r border-white/20">Estado</th>
               <th className="p-4 border-r border-white/20">Fecha</th>
               <th className="p-4">Acciones</th>
@@ -129,12 +129,12 @@ export default function InscripcionesTab() {
                   <td className="p-4 border-r border-white/20">
                     {item.plan?.nombre}
                   </td>
-                  <td className="p-4 border-r border-white/20 text-center font-mono text-neon-green">
+              <td className="p-4 border-r border-white/20 text-center font-mono text-neon-green">
                     ${item.plan?.precio.toLocaleString()}
-                  </td>
-                  <td className="p-4 border-r border-white/20 font-bold uppercase">
-                    {item.mes}
-                  </td>
+              </td>
+              <td className="p-4 border-r border-white/20 font-bold uppercase">
+                {item.mes} {item.anio}
+              </td>
                   <td className="p-4 border-r border-white/20">
                     <span className={`px-2 py-1 border ${
                       item.estado === 'aprobado' ? 'border-neon-green text-neon-green bg-neon-green/10' :

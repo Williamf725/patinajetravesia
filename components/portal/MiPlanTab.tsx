@@ -62,7 +62,7 @@ export default function MiPlanTab({ alumno, planes, inscripcionActual }: Props) 
               {inscripcionActual.estado === 'pendiente' && (
                 <div className="space-y-4">
                   <div className="p-4 bg-yellow-400/10 border-l-4 border-yellow-400 text-yellow-400 font-mono text-sm uppercase">
-                    Tu pago está pendiente de confirmación. Págalo en persona al entrenador.
+                    Tu solicitud fue enviada. El admin confirmará tu acceso pronto.
                   </div>
                   <button
                     onClick={() => {

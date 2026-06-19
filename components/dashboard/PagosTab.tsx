@@ -131,7 +131,7 @@ export default function PagosTab() {
         'Nº': a.numero_alumno,
         'Alumno': a.nombre_completo,
         'Mes': filtroMes,
-        'Año': filtroAnio,
+        'Anio': filtroAnio,
         'Clases': p?.clases_tomadas || 0,
         'Valor Clase': p?.valor_por_clase || 0,
         'Subtotal': calc.subtotal,
@@ -162,7 +162,7 @@ export default function PagosTab() {
             </select>
           </div>
           <div className="flex flex-col gap-1">
-            <label className="font-mono text-[10px] text-white/40 uppercase">Año</label>
+            <label className="font-mono text-[10px] text-white/40 uppercase">Anio</label>
             <select value={filtroAnio} onChange={e => setFiltroAnio(Number(e.target.value))} className="bg-black border border-white/20 p-2 text-sm font-mono outline-none">
               {ANIOS.map(a => <option key={a} value={a}>{a}</option>)}
             </select>

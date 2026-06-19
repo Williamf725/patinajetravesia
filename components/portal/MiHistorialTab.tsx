@@ -32,7 +32,7 @@ export default function MiHistorialTab({ historial }: Props) {
         <table className="w-full font-mono text-xs uppercase tracking-tighter text-left">
           <thead>
             <tr className="bg-black border-b-4 border-white">
-              <th className="p-4 border-r border-white/20">Mes / Año</th>
+              <th className="p-4 border-r border-white/20">Mes / Anio</th>
               <th className="p-4 border-r border-white/20">Plan</th>
               <th className="p-4 border-r border-white/20">Precio</th>
               <th className="p-4 border-r border-white/20 text-center">Clases (I/U/R)</th>

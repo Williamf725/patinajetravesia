@@ -36,9 +36,9 @@ export default function MiAsistenciaTab({ alumnoAutenticadoId }: Props) {
   }, [supabase]);
 
   // Logic to generate dates for columns (matching Dashboard logic)
-  const getDatesInMonth = (monthName: string, year: number) => {
+  const getDatesInMonth = (monthName: string, anio: number) => {
     const monthIndex = MESES.indexOf(monthName);
-    const date = new Date(year, monthIndex, 1);
+    const date = new Date(anio, monthIndex, 1);
     const dates = [];
     while (date.getMonth() === monthIndex) {
       const dayName = date.toLocaleDateString('es-ES', { weekday: 'long' });
