@@ -173,7 +173,7 @@ export default function InscripcionesTab() {
                           <Filter size={14} />
                         </button>
                         <span className="text-[8px] text-white/20 uppercase">
-                          {item.estado === 'aprobado' ? 'Confirmado' : 'Rechazado'} {item.fecha_confirmacion ? new Date(item.fecha_confirmacion).toLocaleDateString() : ''}
+                          {item.estado === 'aprobado' ? 'Confirmado' : 'Rechazado'} {item.fecha_aprobacion ? new Date(item.fecha_aprobacion).toLocaleDateString() : ''}
                         </span>
                       </div>
                     )}

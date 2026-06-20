@@ -30,7 +30,7 @@ export async function updateInscripcionEstado(id: string, estado: 'aprobado' | '
     .from('inscripciones')
     .update({
       estado,
-      fecha_confirmacion: estado === 'aprobado' ? new Date().toISOString() : null
+      fecha_aprobacion: estado === 'aprobado' ? new Date().toISOString() : null
     })
     .eq('id', id)
 

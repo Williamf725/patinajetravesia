@@ -42,7 +42,7 @@ CREATE TABLE IF NOT EXISTS public.inscripciones (
     anio INTEGER NOT NULL,
     estado TEXT DEFAULT 'pendiente' CHECK (estado IN ('pendiente', 'aprobado', 'rechazado')),
     clases_usadas INTEGER DEFAULT 0,
-    fecha_confirmacion TIMESTAMPTZ,
+    fecha_aprobacion TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT now(),
     UNIQUE(alumno_id, mes, anio)
 );
