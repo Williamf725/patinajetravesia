@@ -41,25 +41,32 @@ export default function Navbar() {
     setIsSubmitting(true);
     setError(null);
 
-    const { error } = await supabase.auth.signInWithPassword({
+    const { data, error: authError } = await supabase.auth.signInWithPassword({
       email,
       password,
     });
 
-    if (error) {
-      if (error.message === 'Invalid login credentials') {
+    if (authError) {
+      if (authError.message.includes('Invalid login credentials')) {
         setError('Correo o contraseña incorrectos');
-      } else if (error.message === 'Email not confirmed') {
+      } else if (authError.message.includes('Email not confirmed')) {
         setError('Debes confirmar tu correo antes de iniciar sesión');
       } else {
         setError('Error al iniciar sesión. Intenta de nuevo');
       }
       setIsSubmitting(false);
-    } else {
+    } else if (data.user) {
       setIsModalOpen(false);
       setIsSubmitting(false);
       setEmail('');
       setPassword('');
+
+      // Redirect logic for modal login
+      if (data.user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+        window.location.href = '/dashboard';
+      } else {
+        window.location.href = '/portal';
+      }
     }
   };
 

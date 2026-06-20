@@ -1,28 +1,26 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useActionState } from 'react';
+import { useFormStatus } from 'react-dom';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
-import { login } from '@/app/auth/actions';
+import { loginAction } from '@/app/auth/actions';
+
+function SubmitButton() {
+  const { pending } = useFormStatus();
+  return (
+    <button
+      type="submit"
+      disabled={pending}
+      className="btn-tape w-full py-4 mt-4 text-xl tracking-widest font-anton disabled:opacity-50"
+    >
+      {pending ? 'VERIFICANDO...' : 'INGRESAR'}
+    </button>
+  );
+}
 
 export default function LoginPage() {
-  const [error, setError] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-
-    setError(null);
-    setLoading(true);
-
-    try {
-      await login(formData);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al iniciar sesión');
-      setLoading(false);
-    }
-  };
+  const [state, formAction] = useActionState(loginAction, null);
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-black relative pt-20">
@@ -43,7 +41,7 @@ export default function LoginPage() {
           </h1>
         </div>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
+        <form action={formAction} className="space-y-6">
           <div className="flex flex-col gap-2">
             <label className="font-mono text-[10px] text-neon-green uppercase tracking-[0.2em] font-bold">Email</label>
             <input
@@ -66,18 +64,13 @@ export default function LoginPage() {
             />
           </div>
 
-          {error && (
+          {state?.error && (
             <div className="p-3 bg-hot-pink/10 border-l-4 border-hot-pink text-hot-pink font-mono text-[10px] uppercase">
-              {error}
+              {state.error}
             </div>
           )}
 
-          <button
-            disabled={loading}
-            className="btn-tape w-full py-4 mt-4 text-xl tracking-widest font-anton disabled:opacity-50"
-          >
-            {loading ? 'VERIFICANDO...' : 'INGRESAR'}
-          </button>
+          <SubmitButton />
         </form>
 
         <div className="mt-8 text-center">

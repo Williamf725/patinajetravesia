@@ -6,15 +6,15 @@ import { createClient } from '@/lib/supabase/server'
 import { headers } from 'next/headers'
 import { enviarBienvenida } from '@/lib/email/resend'
 
-export async function login(formData: FormData) {
-  const supabase = await createClient()
-
+export async function loginAction(_prevState: unknown, formData: FormData) {
   const email = formData.get('email') as string
   const password = formData.get('password') as string
 
   if (!email || !password) {
-    throw new Error('Completa todos los campos')
+    return { error: 'Completa todos los campos' }
   }
+
+  const supabase = await createClient()
 
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
@@ -22,31 +22,42 @@ export async function login(formData: FormData) {
   })
 
   if (error) {
-    if (error.message === 'Invalid login credentials') {
-      throw new Error('Correo o contraseña incorrectos')
+    console.error('Login error:', error.message, error.code)
+    if (error.message.includes('Invalid login credentials')) {
+      return { error: 'Correo o contraseña incorrectos' }
     }
-    if (error.message === 'Email not confirmed') {
-      throw new Error('Debes confirmar tu correo antes de iniciar sesión')
+    if (error.message.includes('Email not confirmed')) {
+      return { error: 'Debes confirmar tu correo antes de iniciar sesión' }
     }
-    throw new Error('Error al iniciar sesión. Intenta de nuevo')
+    return { error: 'Error al iniciar sesión. Intenta de nuevo' }
+  }
+
+  if (!data.user) {
+    console.error('Login error: No user returned after success')
+    return { error: 'No se pudo iniciar sesión. Intenta de nuevo' }
   }
 
   // Log the login event if log table exists
   try {
-    if (data.user) {
-      const userAgent = (await headers()).get('user-agent')
-
-      await supabase.from('login_logs').insert({
-        user_id: data.user.id,
-        email: data.user.email,
-        user_agent: userAgent,
-      })
-    }
+    const userAgent = (await headers()).get('user-agent')
+    await supabase.from('login_logs').insert({
+      user_id: data.user.id,
+      email: data.user.email,
+      user_agent: userAgent,
+    })
   } catch (e) {
     console.error('Failed to log login event:', e)
   }
 
   revalidatePath('/', 'layout')
+
+  // Redirección fuera del try/catch
+  const ADMIN_EMAIL = 'clubdepatinajetravesia@gmail.com'
+  if (data.user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+    redirect('/dashboard')
+  }
+
+  redirect('/portal')
 }
 
 export async function registrarAlumno(formData: FormData) {
