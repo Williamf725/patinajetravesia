@@ -30,7 +30,8 @@ CREATE TABLE IF NOT EXISTS public.planes (
 INSERT INTO public.planes (nombre, precio, clases_incluidas) VALUES
 ('Clase Individual', 12000, 1),
 ('Mensualidad Básica', 40000, 4),
-('Mensualidad Completa', 70000, 8)
+('Mensualidad Completa', 70000, 8),
+('Mensualidad Premium', 100000, 12)
 ON CONFLICT DO NOTHING;
 
 -- Tabla de Inscripciones (Planes seleccionados por alumnos)
@@ -42,8 +43,11 @@ CREATE TABLE IF NOT EXISTS public.inscripciones (
     anio INTEGER NOT NULL,
     estado TEXT DEFAULT 'pendiente' CHECK (estado IN ('pendiente', 'aprobado', 'rechazado')),
     clases_usadas INTEGER DEFAULT 0,
+    total_pagado NUMERIC DEFAULT 0,
+    observaciones TEXT,
     fecha_aprobacion TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT now(),
+    updated_at TIMESTAMPTZ DEFAULT now(),
     UNIQUE(alumno_id, mes, anio)
 );
 

@@ -14,6 +14,27 @@ async function checkAdmin() {
   }
 }
 
+export async function savePagosChanges(pagos: {
+  alumno_id: string;
+  plan_id: string;
+  mes: string;
+  anio: number;
+  clases_usadas: number;
+  total_pagado: number;
+  estado: 'pendiente' | 'aprobado' | 'rechazado';
+  observaciones: string | null;
+}[]) {
+  await checkAdmin()
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from('inscripciones')
+    .upsert(pagos, { onConflict: 'alumno_id, mes, anio' })
+
+  if (error) throw error
+  revalidatePath('/dashboard')
+}
+
 export async function updateInscripcionEstado(id: string, estado: 'aprobado' | 'rechazado' | 'pendiente') {
   await checkAdmin()
   const supabase = await createClient()

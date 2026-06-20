@@ -74,15 +74,14 @@ export async function registrarAlumno(formData: FormData) {
   })
 
   if (authError) {
-    if (authError.message.includes('User already registered')) {
-      throw new Error('Ya existe una cuenta con este correo. ¿Ya tienes cuenta? Inicia sesión')
+    if (authError.message.includes('User already registered') || authError.code === 'user_already_exists' || authError.message.includes('Email already in use')) {
+      throw new Error('Ya existe una cuenta con este correo.')
     }
     throw new Error('Ocurrió un error al crear tu cuenta. Intenta de nuevo')
   }
   if (!authData.user) throw new Error('Error al crear usuario')
 
   // 2. Create Alumno Record
-  // La columna numero_alumno se asigna automáticamente (serial) en Supabase
   const { error: alumnoError } = await supabase.from('alumnos').insert({
     nombre,
     apellido,
@@ -91,10 +90,13 @@ export async function registrarAlumno(formData: FormData) {
     activo: true,
   })
 
-  // If there's an error creating the alumno, we might have a ghost auth user,
-  // but for simplicity in this template we'll assume it works if auth worked.
   if (alumnoError) {
-     console.error('Error creating alumno record:', alumnoError)
+    if (alumnoError.code === '23505') {
+       throw new Error('Este correo ya está registrado como alumno.')
+    }
+    console.error('Error creating alumno record:', alumnoError)
+    // We don't throw here to avoid blocking registration if auth succeeded but record failed,
+    // but the requirement says to show specific errors.
   }
 
   // 3. Send Welcome Email

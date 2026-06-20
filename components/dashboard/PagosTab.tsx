@@ -3,12 +3,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import * as XLSX from 'xlsx';
-import { Plus, Save, Download, Check, X } from 'lucide-react';
-import { Alumno, Pago, Abono } from '@/types/database';
+import { Save, Download, Search } from 'lucide-react';
+import { Alumno, Inscripcion, Plan } from '@/types/database';
+import { savePagosChanges } from '@/app/auth/actions/admin';
 
 const MESES = [
-  'Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio',
-  'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'
+  'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+  'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
 ];
 
 const ANIOS = [2024, 2025, 2026];
@@ -16,24 +17,29 @@ const ANIOS = [2024, 2025, 2026];
 export default function PagosTab() {
   const [loading, setLoading] = useState(true);
   const [alumnos, setAlumnos] = useState<Alumno[]>([]);
-  const [pagos, setPagos] = useState<Pago[]>([]);
+  const [planes, setPlanes] = useState<Plan[]>([]);
+  const [inscripciones, setInscripciones] = useState<Inscripcion[]>([]);
+
   const [filtroMes, setFiltroMes] = useState(MESES[new Date().getMonth()]);
   const [filtroAnio, setFiltroAnio] = useState(new Date().getFullYear());
   const [filtroEstado, setFiltroEstado] = useState('Todos');
-  const [isSaving, setIsSaving] = useState(false);
+  const [search, setSearch] = useState('');
 
+  const [isSaving, setIsSaving] = useState(false);
   const supabase = createClient();
 
   const fetchData = useCallback(async () => {
     setLoading(true);
     const { data: alumnosData } = await supabase.from('alumnos').select('*').order('numero_alumno');
-    const { data: pagosData } = await supabase.from('pagos')
-      .select('*')
+    const { data: planesData } = await supabase.from('planes').select('*').order('precio', { ascending: true });
+    const { data: inscData } = await supabase.from('inscripciones')
+      .select('*, plan:planes(*)')
       .eq('mes', filtroMes)
       .eq('anio', filtroAnio);
 
     setAlumnos((alumnosData as Alumno[]) || []);
-    setPagos((pagosData as Pago[]) || []);
+    setPlanes((planesData as Plan[]) || []);
+    setInscripciones((inscData as Inscripcion[]) || []);
     setLoading(false);
   }, [filtroMes, filtroAnio, supabase]);
 
@@ -41,245 +47,256 @@ export default function PagosTab() {
     fetchData();
   }, [fetchData]);
 
-  const updatePago = (alumnoId: string, field: string, value: string | number | boolean | Abono[]) => {
-    setPagos(prev => {
-      const exists = prev.find(p => p.alumno_id === alumnoId);
+  const updateInscripcion = (alumnoId: string, field: string, value: string | number | null) => {
+    setInscripciones(prev => {
+      const exists = prev.find(i => i.alumno_id === alumnoId);
       if (exists) {
-        return prev.map(p => p.alumno_id === alumnoId ? { ...p, [field]: value } : p);
+        return prev.map(i => {
+          if (i.alumno_id === alumnoId) {
+            const updated = { ...i, [field]: value };
+            if (field === 'plan_id') {
+              updated.plan = planes.find(p => p.id === value);
+            }
+            return updated;
+          }
+          return i;
+        });
       } else {
+        // Create a default skeleton for "Sin plan" students being edited
+        const selectedPlan = field === 'plan_id' ? planes.find(p => p.id === value) : planes[0];
         return [...prev, {
-          id: '',
+          id: Math.random().toString(), // temp id
           alumno_id: alumnoId,
+          plan_id: selectedPlan?.id || '',
+          plan: selectedPlan,
           mes: filtroMes,
           anio: filtroAnio,
-          clases_tomadas: 0,
-          valor_por_clase: 0,
-          pago_mensual: 0,
-          pagado: false,
-          abonos: [],
-          observaciones: '',
-          created_at: '',
-          updated_at: '',
-          [field]: value
-        }] as Pago[];
+          clases_usadas: field === 'clases_usadas' ? (value as number) : 0,
+          total_pagado: field === 'total_pagado' ? (value as number) : 0,
+          estado: 'pendiente',
+          observaciones: field === 'observaciones' ? (value as string) : '',
+          fecha_aprobacion: null,
+          created_at: new Date().toISOString()
+        } as Inscripcion];
       }
     });
   };
 
-  const addAbono = (alumnoId: string) => {
-    const monto = prompt('Monto del abono (COP):');
-    if (!monto || isNaN(Number(monto))) return;
-
-    const currentPago = pagos.find(p => p.alumno_id === alumnoId);
-    const abonos = currentPago?.abonos || [];
-    const nuevoAbono: Abono = {
-      monto: Number(monto),
-      fecha: new Date().toISOString()
-    };
-
-    updatePago(alumnoId, 'abonos', [...abonos, nuevoAbono]);
-  };
-
   const handleSave = async () => {
+    if (inscripciones.length === 0) return;
     setIsSaving(true);
-    const { error } = await supabase.from('pagos').upsert(
-      pagos.map(({ alumno_id, mes, anio, clases_tomadas, valor_por_clase, pago_mensual, pagado, abonos, observaciones }) => ({
-        alumno_id,
-        mes,
-        anio,
-        clases_tomadas,
-        valor_por_clase,
-        pago_mensual,
-        pagado,
-        abonos,
-        observaciones
-      })),
-      { onConflict: 'alumno_id, mes, anio' }
-    );
+    try {
+      const dataToSave = inscripciones.map(i => {
+        // Calculate status automatically based on payment
+        const planPrice = i.plan?.precio || 0;
+        let autoEstado = i.estado;
+        if (i.total_pagado >= planPrice && planPrice > 0) autoEstado = 'aprobado';
+        else if (i.total_pagado > 0) autoEstado = 'pendiente'; // Or could be a new 'abono' state if schema allowed
 
-    if (error) alert('Error: ' + error.message);
-    else alert('Pagos guardados');
-    setIsSaving(false);
+        return {
+          alumno_id: i.alumno_id,
+          plan_id: i.plan_id,
+          mes: i.mes,
+          anio: i.anio,
+          clases_usadas: i.clases_usadas,
+          total_pagado: i.total_pagado,
+          estado: autoEstado,
+          observaciones: i.observaciones
+        };
+      });
+
+      await savePagosChanges(dataToSave);
+      alert('Cambios guardados con éxito');
+      fetchData();
+    } catch (err) {
+      alert('Error al guardar: ' + (err instanceof Error ? err.message : String(err)));
+    } finally {
+      setIsSaving(false);
+    }
   };
 
-  const calculateRow = (pago: Pago | undefined) => {
-    const subtotal = (pago?.clases_tomadas || 0) * (pago?.valor_por_clase || 0);
-    const mensual = pago?.pago_mensual || 0;
-    const granTotal = subtotal + mensual;
+  const getCalculatedState = (insc: Inscripcion | undefined) => {
+    if (!insc || !insc.plan_id) return { label: 'Sin plan', color: 'text-white/20', saldo: 0 };
 
-    const totalAbonado = (pago?.abonos || []).reduce((acc: number, cur: Abono) => acc + cur.monto, 0);
-    const saldo = granTotal - totalAbonado;
+    const total = insc.plan?.precio || 0;
+    const pagado = insc.total_pagado || 0;
+    const saldo = total - pagado;
 
-    const estado = pago?.pagado ? 'Pagado' : (totalAbonado > 0 ? 'Abono' : 'Pendiente');
-    const color = pago?.pagado ? 'bg-neon-green/20 text-neon-green' : (totalAbonado > 0 ? 'bg-yellow-500/20 text-yellow-500' : 'bg-hot-pink/20 text-hot-pink');
-
-    return { subtotal, mensual, granTotal, totalAbonado, saldo, estado, color };
+    if (pagado >= total && total > 0) return { label: 'Pagado', color: 'text-neon-green', saldo };
+    if (pagado > 0) return { label: 'Abono', color: 'text-yellow-400', saldo };
+    return { label: 'Pendiente', color: 'text-hot-pink', saldo };
   };
 
   const filteredAlumnos = alumnos.filter(a => {
-    if (filtroEstado === 'Todos') return true;
-    const p = pagos.find(p => p.alumno_id === a.id);
-    const { estado } = calculateRow(p);
-    return estado === filtroEstado;
+    const insc = inscripciones.find(i => i.alumno_id === a.id);
+    const { label } = getCalculatedState(insc);
+
+    const matchesEstado = filtroEstado === 'Todos' || label === filtroEstado;
+    const matchesSearch = a.nombre_completo.toLowerCase().includes(search.toLowerCase());
+
+    return matchesEstado && matchesSearch;
   });
 
   const exportExcel = () => {
     const data = filteredAlumnos.map(a => {
-      const p = pagos.find(p => p.alumno_id === a.id);
-      const calc = calculateRow(p);
+      const insc = inscripciones.find(i => i.alumno_id === a.id);
+      const { label, saldo } = getCalculatedState(insc);
       return {
         'Nº': a.numero_alumno,
         'Alumno': a.nombre_completo,
-        'Mes': filtroMes,
-        'Anio': filtroAnio,
-        'Clases': p?.clases_tomadas || 0,
-        'Valor Clase': p?.valor_por_clase || 0,
-        'Subtotal': calc.subtotal,
-        'Total Abonado': calc.totalAbonado,
-        'Saldo': calc.saldo,
-        'Estado': calc.estado,
-        'Obs': p?.observaciones || ''
+        'Email': a.email,
+        'Plan': insc?.plan?.nombre || 'N/A',
+        'Total a Pagar': insc?.plan?.precio || 0,
+        'Total Pagado': insc?.total_pagado || 0,
+        'Saldo': saldo,
+        'Estado': label,
+        'Obs': insc?.observaciones || ''
       };
     });
     const ws = XLSX.utils.json_to_sheet(data);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, 'Pagos');
-    XLSX.writeFile(wb, `Pagos_${filtroMes}_${filtroAnio}.xlsx`);
+    XLSX.writeFile(wb, `Reporte_Pagos_${filtroMes}_${filtroAnio}.xlsx`);
   };
 
-  if (loading) return <div>Cargando planilla de pagos...</div>;
-
   return (
-    <div className="flex flex-col gap-6">
-
-      {/* Filters Area */}
-      <div className="flex flex-wrap items-end justify-between gap-6 bg-white/5 p-6 border-b border-white/10">
+    <div className="space-y-6">
+      {/* Filters Bar */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-[#1a1a1a] p-6 border-4 border-white shadow-brutal">
         <div className="flex flex-wrap gap-4">
           <div className="flex flex-col gap-1">
-            <label className="font-mono text-[10px] text-white/40 uppercase">Mes</label>
-            <select value={filtroMes} onChange={e => setFiltroMes(e.target.value)} className="bg-black border border-white/20 p-2 text-sm font-mono outline-none">
+            <label className="font-mono text-[9px] text-white/40 uppercase">Mes</label>
+            <select value={filtroMes} onChange={e => setFiltroMes(e.target.value)} className="bg-black border border-white/20 p-2 text-xs font-mono outline-none uppercase">
               {MESES.map(m => <option key={m} value={m}>{m}</option>)}
             </select>
           </div>
           <div className="flex flex-col gap-1">
-            <label className="font-mono text-[10px] text-white/40 uppercase">Anio</label>
-            <select value={filtroAnio} onChange={e => setFiltroAnio(Number(e.target.value))} className="bg-black border border-white/20 p-2 text-sm font-mono outline-none">
+            <label className="font-mono text-[9px] text-white/40 uppercase">Anio</label>
+            <select value={filtroAnio} onChange={e => setFiltroAnio(Number(e.target.value))} className="bg-black border border-white/20 p-2 text-xs font-mono outline-none">
               {ANIOS.map(a => <option key={a} value={a}>{a}</option>)}
             </select>
           </div>
           <div className="flex flex-col gap-1">
-            <label className="font-mono text-[10px] text-white/40 uppercase">Estado</label>
-            <select value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)} className="bg-black border border-white/20 p-2 text-sm font-mono outline-none">
-              <option value="Todos">Todos</option>
-              <option value="Pagado">Pagado</option>
-              <option value="Abono">Abono</option>
-              <option value="Pendiente">Pendiente</option>
+            <label className="font-mono text-[9px] text-white/40 uppercase">Estado</label>
+            <select value={filtroEstado} onChange={e => setFiltroEstado(e.target.value)} className="bg-black border border-white/20 p-2 text-xs font-mono outline-none">
+              <option value="Todos">TODOS</option>
+              <option value="Pagado">PAGADO</option>
+              <option value="Abono">ABONO</option>
+              <option value="Pendiente">PENDIENTE</option>
+              <option value="Sin plan">SIN PLAN</option>
             </select>
+          </div>
+          <div className="flex flex-col gap-1 min-w-[200px]">
+             <label className="font-mono text-[9px] text-white/40 uppercase">Buscar</label>
+             <div className="flex items-center gap-2 bg-black border border-white/20 p-2">
+                <Search size={14} className="text-white/20" />
+                <input
+                  type="text"
+                  value={search}
+                  onChange={e => setSearch(e.target.value)}
+                  placeholder="NOMBRE..."
+                  className="bg-transparent outline-none text-xs font-mono uppercase w-full"
+                />
+             </div>
           </div>
         </div>
 
-        <div className="flex gap-2">
-           <button onClick={exportExcel} className="bg-white text-black px-4 py-2 text-xs font-bold hover:bg-neon-green transition-colors flex items-center gap-2">
+        <div className="flex gap-2 w-full lg:w-auto">
+           <button onClick={exportExcel} className="flex-1 lg:flex-none bg-white text-black px-6 py-3 text-xs font-bold hover:bg-neon-green transition-colors flex items-center justify-center gap-2">
               <Download size={14} /> EXCEL
            </button>
-           <button onClick={handleSave} disabled={isSaving} className="bg-neon-green text-black px-4 py-2 text-xs font-bold hover:brightness-110 flex items-center gap-2">
+           <button onClick={handleSave} disabled={isSaving || loading} className="flex-1 lg:flex-none bg-neon-green text-black px-6 py-3 text-xs font-bold hover:brightness-110 flex items-center justify-center gap-2 disabled:opacity-50">
               <Save size={14} /> {isSaving ? 'GUARDANDO...' : 'GUARDAR CAMBIOS'}
            </button>
         </div>
       </div>
 
-      {/* Pagos Table */}
-      <div className="overflow-x-auto">
-        <table className="w-full border-collapse font-mono text-[11px]">
+      {/* Spreadsheet Table */}
+      <div className="bg-[#1a1a1a] border-4 border-white shadow-brutal overflow-x-auto">
+        <table className="w-full border-collapse font-mono text-[10px] uppercase">
           <thead>
-            <tr className="bg-[#222] border-b-2 border-white text-white/40 uppercase tracking-tighter">
-              <th className="p-3 text-left">Alumno</th>
-              <th className="p-3 text-center">Clases</th>
-              <th className="p-3 text-center">Valor Cl.</th>
-              <th className="p-3 text-center">Subtotal</th>
-              <th className="p-3 text-center">Pago Mens.</th>
-              <th className="p-3 text-center">Gran Total</th>
-              <th className="p-3 text-center">Abonos</th>
-              <th className="p-3 text-center">Total Ab.</th>
-              <th className="p-3 text-center">Saldo</th>
-              <th className="p-3 text-center">¿PAGÓ?</th>
-              <th className="p-3 text-left">Obs</th>
+            <tr className="bg-black border-b-4 border-white text-white/60">
+              <th className="p-3 text-left border-r border-white/10">Alumno</th>
+              <th className="p-3 text-left border-r border-white/10">Plan</th>
+              <th className="p-3 text-center border-r border-white/10">Incluidas</th>
+              <th className="p-3 text-center border-r border-white/10">Usadas</th>
+              <th className="p-3 text-center border-r border-white/10">Total</th>
+              <th className="p-3 text-center border-r border-white/10">Pagado</th>
+              <th className="p-3 text-center border-r border-white/10">Saldo</th>
+              <th className="p-3 text-center border-r border-white/10">Estado</th>
+              <th className="p-3 text-left">Observaciones</th>
             </tr>
           </thead>
           <tbody>
-            {filteredAlumnos.map((alumno) => {
-              const p = pagos.find(p => p.alumno_id === alumno.id);
-              const { subtotal, granTotal, totalAbonado, saldo } = calculateRow(p);
+            {loading ? (
+              <tr><td colSpan={9} className="p-20 text-center animate-pulse text-xl font-anton">Cargando datos financieros...</td></tr>
+            ) : filteredAlumnos.length === 0 ? (
+              <tr><td colSpan={9} className="p-10 text-center text-white/20">No se encontraron registros</td></tr>
+            ) : (
+              filteredAlumnos.map((alumno) => {
+                const insc = inscripciones.find(i => i.alumno_id === alumno.id);
+                const { label, color, saldo } = getCalculatedState(insc);
 
-              return (
-                <tr key={alumno.id} className="border-b border-white/10 hover:bg-white/5 transition-all">
-                  <td className="p-3">
-                    <span className="text-[9px] text-white/20 block">#{alumno.numero_alumno}</span>
-                    <span className="font-bold uppercase whitespace-nowrap">{alumno.nombre_completo}</span>
-                  </td>
-                  <td className="p-3">
-                    <input
-                      type="number"
-                      value={p?.clases_tomadas || 0}
-                      onChange={e => updatePago(alumno.id, 'clases_tomadas', Number(e.target.value))}
-                      className="w-16 bg-white/5 border border-white/10 p-1 text-center outline-none focus:border-neon-green"
-                    />
-                  </td>
-                  <td className="p-3">
-                    <input
-                      type="number"
-                      value={p?.valor_por_clase || 0}
-                      onChange={e => updatePago(alumno.id, 'valor_por_clase', Number(e.target.value))}
-                      className="w-24 bg-white/5 border border-white/10 p-1 text-center outline-none focus:border-neon-green"
-                    />
-                  </td>
-                  <td className="p-3 text-center font-bold">${subtotal.toLocaleString()}</td>
-                  <td className="p-3">
-                    <input
-                      type="number"
-                      value={p?.pago_mensual || 0}
-                      onChange={e => updatePago(alumno.id, 'pago_mensual', Number(e.target.value))}
-                      className="w-24 bg-white/5 border border-white/10 p-1 text-center outline-none focus:border-neon-green"
-                    />
-                  </td>
-                  <td className="p-3 text-center font-black bg-white/5 cursor-pointer hover:bg-white/10 transition-colors"
-                      onClick={() => {
-                        const confirmMsg = p?.pagado ? '¿Marcar como NO pagado?' : '¿Marcar como PAGADO TOTAL?';
-                        if (confirm(confirmMsg)) {
-                          updatePago(alumno.id, 'pagado', !p?.pagado);
-                        }
-                      }}>
-                    <span className={p?.pagado ? 'text-neon-green' : 'text-white'}>
-                      ${granTotal.toLocaleString()}
-                    </span>
-                  </td>
-                  <td className="p-3 text-center">
-                    <button onClick={() => addAbono(alumno.id)} className="p-1 hover:text-neon-green transition-colors">
-                      <Plus size={16} />
-                    </button>
-                  </td>
-                  <td className="p-3 text-center text-neon-green font-bold">${totalAbonado.toLocaleString()}</td>
-                  <td className={`p-3 text-center font-black ${saldo > 0 ? 'text-hot-pink' : 'text-neon-green'}`}>
-                    ${saldo.toLocaleString()}
-                  </td>
-                  <td className="p-3 text-center">
-                    <button
-                      onClick={() => updatePago(alumno.id, 'pagado', !p?.pagado)}
-                      className={`w-8 h-8 mx-auto flex items-center justify-center rounded border-2 transition-all ${p?.pagado ? 'bg-neon-green border-neon-green text-black' : 'border-white/20 text-white/20 hover:border-white'}`}
-                    >
-                      {p?.pagado ? <Check size={16} strokeWidth={4} /> : <X size={16} />}
-                    </button>
-                  </td>
-                  <td className="p-3 min-w-[200px]">
-                    <textarea
-                      value={p?.observaciones || ''}
-                      onChange={e => updatePago(alumno.id, 'observaciones', e.target.value)}
-                      className="w-full bg-white/5 border border-white/10 p-1 text-[9px] outline-none h-10 resize-none focus:border-neon-green"
-                    />
-                  </td>
-                </tr>
-              );
-            })}
+                return (
+                  <tr key={alumno.id} className="border-b border-white/10 hover:bg-white/5 transition-colors">
+                    <td className="p-3 border-r border-white/10 min-w-[180px]">
+                      <span className="text-neon-green font-bold">#{alumno.numero_alumno}</span>
+                      <p className="font-anton text-sm leading-none mt-1">{alumno.nombre_completo}</p>
+                      <p className="text-[8px] text-white/40 truncate">{alumno.email}</p>
+                    </td>
+                    <td className="p-3 border-r border-white/10 min-w-[150px]">
+                      <select
+                        value={insc?.plan_id || ''}
+                        onChange={e => updateInscripcion(alumno.id, 'plan_id', e.target.value)}
+                        className="bg-black/40 border border-white/10 p-1 w-full outline-none focus:border-neon-green"
+                      >
+                        <option value="">SIN PLAN</option>
+                        {planes.map(p => (
+                          <option key={p.id} value={p.id}>{p.nombre} (${p.precio.toLocaleString()})</option>
+                        ))}
+                      </select>
+                    </td>
+                    <td className="p-3 text-center border-r border-white/10 font-bold text-white/40">
+                      {insc?.plan?.clases_incluidas || 0}
+                    </td>
+                    <td className="p-3 text-center border-r border-white/10">
+                      <input
+                        type="number"
+                        value={insc?.clases_usadas || 0}
+                        onChange={e => updateInscripcion(alumno.id, 'clases_usadas', Number(e.target.value))}
+                        className="w-12 bg-transparent border-b border-white/10 text-center outline-none focus:border-neon-green"
+                      />
+                    </td>
+                    <td className="p-3 text-center border-r border-white/10 font-anton text-white/60">
+                      ${(insc?.plan?.precio || 0).toLocaleString()}
+                    </td>
+                    <td className="p-3 text-center border-r border-white/10">
+                      <input
+                        type="number"
+                        value={insc?.total_pagado || 0}
+                        onChange={e => updateInscripcion(alumno.id, 'total_pagado', Number(e.target.value))}
+                        className="w-20 bg-neon-green/5 border-b border-neon-green/20 text-center outline-none focus:text-neon-green font-bold"
+                      />
+                    </td>
+                    <td className={`p-3 text-center border-r border-white/10 font-black ${saldo > 0 ? 'text-hot-pink' : 'text-neon-green'}`}>
+                      ${saldo.toLocaleString()}
+                    </td>
+                    <td className={`p-3 text-center border-r border-white/10 font-anton ${color}`}>
+                      {label}
+                    </td>
+                    <td className="p-3">
+                      <input
+                        type="text"
+                        value={insc?.observaciones || ''}
+                        onChange={e => updateInscripcion(alumno.id, 'observaciones', e.target.value)}
+                        placeholder="..."
+                        className="w-full bg-transparent outline-none text-[9px] focus:placeholder-transparent"
+                      />
+                    </td>
+                  </tr>
+                );
+              })
+            )}
           </tbody>
         </table>
       </div>

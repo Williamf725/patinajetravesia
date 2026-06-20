@@ -21,12 +21,15 @@ export type Inscripcion = {
   mes: string;
   anio: number;
   estado: 'pendiente' | 'aprobado' | 'rechazado';
+  clases_usadas: number;
+  total_pagado: number;
+  observaciones: string | null;
   fecha_aprobacion: string | null;
   created_at: string;
+  updated_at?: string;
   // Join fields
   alumno?: Alumno;
   plan?: Plan;
-  clases_usadas?: number;
 };
 
 export type Asistencia = {
