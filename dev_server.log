@@ -1,0 +1,12 @@
+
+> skating-club-template@0.1.0 dev
+> next dev
+
+ ⚠ Port 3000 is in use by an unknown process, using available port 3005 instead.
+   ▲ Next.js 15.5.19
+   - Local:        http://localhost:3005
+   - Network:      http://192.168.0.2:3005
+   - Environments: .env.local
+
+ ✓ Starting...
+ ✓ Ready in 2.2s

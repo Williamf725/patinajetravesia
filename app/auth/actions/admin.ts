@@ -35,6 +35,19 @@ export async function savePagosChanges(pagos: {
   revalidatePath('/dashboard')
 }
 
+export async function verifyComprobante(id: string) {
+  await checkAdmin()
+  const supabase = await createClient()
+
+  const { error } = await supabase
+    .from('inscripciones')
+    .update({ comprobante_verificado: true })
+    .eq('id', id)
+
+  if (error) throw error
+  revalidatePath('/dashboard')
+}
+
 export async function updateInscripcionEstado(id: string, estado: 'aprobado' | 'rechazado' | 'pendiente') {
   await checkAdmin()
   const supabase = await createClient()

@@ -3,9 +3,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import * as XLSX from 'xlsx';
-import { Save, Download, Search } from 'lucide-react';
+import { Save, Download, Search, Eye, CheckCircle, XCircle, X, DollarSign, Users, AlertTriangle } from 'lucide-react';
 import { Alumno, Inscripcion, Plan } from '@/types/database';
-import { savePagosChanges } from '@/app/auth/actions/admin';
+import { savePagosChanges, updateInscripcionEstado, verifyComprobante } from '@/app/auth/actions/admin';
 
 const MESES = [
   'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
@@ -24,6 +24,7 @@ export default function PagosTab() {
   const [filtroAnio, setFiltroAnio] = useState(new Date().getFullYear());
   const [filtroEstado, setFiltroEstado] = useState('Todos');
   const [search, setSearch] = useState('');
+  const [selectedComprobante, setSelectedComprobante] = useState<string | null>(null);
 
   const [isSaving, setIsSaving] = useState(false);
   const supabase = createClient();
@@ -159,8 +160,65 @@ export default function PagosTab() {
     XLSX.writeFile(wb, `Reporte_Pagos_${filtroMes}_${filtroAnio}.xlsx`);
   };
 
+  const stats = {
+    totalRecaudado: inscripciones.reduce((acc, curr) => acc + (curr.total_pagado || 0), 0),
+    totalPendiente: filteredAlumnos.reduce((acc, curr) => {
+      const insc = inscripciones.find(i => i.alumno_id === curr.id);
+      const { saldo } = getCalculatedState(insc);
+      return acc + (saldo > 0 ? saldo : 0);
+    }, 0),
+    alumnosActivos: filteredAlumnos.filter(a => {
+      const insc = inscripciones.find(i => i.alumno_id === a.id);
+      return insc && insc.plan_id;
+    }).length,
+    comprobantesPendientes: inscripciones.filter(i => i.comprobante_url && !i.comprobante_verificado).length
+  };
+
   return (
     <div className="space-y-6">
+      {/* Financial Summary */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="bg-[#1a1a1a] border-2 border-white p-4 shadow-brutal flex items-center gap-4">
+          <div className="bg-neon-green p-3 text-black">
+            <DollarSign size={24} />
+          </div>
+          <div>
+            <p className="text-[10px] text-white/40 uppercase font-mono">Recaudado ({filtroMes})</p>
+            <p className="text-xl font-anton text-neon-green">${stats.totalRecaudado.toLocaleString()}</p>
+          </div>
+        </div>
+
+        <div className="bg-[#1a1a1a] border-2 border-white p-4 shadow-brutal flex items-center gap-4">
+          <div className="bg-hot-pink p-3 text-white">
+            <AlertTriangle size={24} />
+          </div>
+          <div>
+            <p className="text-[10px] text-white/40 uppercase font-mono">Por Cobrar</p>
+            <p className="text-xl font-anton text-hot-pink">${stats.totalPendiente.toLocaleString()}</p>
+          </div>
+        </div>
+
+        <div className="bg-[#1a1a1a] border-2 border-white p-4 shadow-brutal flex items-center gap-4">
+          <div className="bg-white p-3 text-black">
+            <Users size={24} />
+          </div>
+          <div>
+            <p className="text-[10px] text-white/40 uppercase font-mono">Alumnos con Plan</p>
+            <p className="text-xl font-anton text-white">{stats.alumnosActivos}</p>
+          </div>
+        </div>
+
+        <div className="bg-[#1a1a1a] border-2 border-white p-4 shadow-brutal flex items-center gap-4">
+          <div className="bg-yellow-400 p-3 text-black">
+            <Eye size={24} />
+          </div>
+          <div>
+            <p className="text-[10px] text-white/40 uppercase font-mono">Voucher x Validar</p>
+            <p className="text-xl font-anton text-yellow-400">{stats.comprobantesPendientes}</p>
+          </div>
+        </div>
+      </div>
+
       {/* Filters Bar */}
       <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-[#1a1a1a] p-6 border-4 border-white shadow-brutal">
         <div className="flex flex-wrap gap-4">
@@ -224,7 +282,9 @@ export default function PagosTab() {
               <th className="p-3 text-center border-r border-white/10">Pagado</th>
               <th className="p-3 text-center border-r border-white/10">Saldo</th>
               <th className="p-3 text-center border-r border-white/10">Estado</th>
-              <th className="p-3 text-left">Observaciones</th>
+              <th className="p-3 text-center border-r border-white/10">Comprobante</th>
+              <th className="p-3 text-left border-r border-white/10">Obs</th>
+              <th className="p-3 text-center">Acciones</th>
             </tr>
           </thead>
           <tbody>
@@ -284,7 +344,36 @@ export default function PagosTab() {
                     <td className={`p-3 text-center border-r border-white/10 font-anton ${color}`}>
                       {label}
                     </td>
-                    <td className="p-3">
+                    <td className="p-3 text-center border-r border-white/10">
+                      {insc?.comprobante_url ? (
+                        <div className="flex flex-col items-center gap-1">
+                          <button
+                            onClick={() => setSelectedComprobante(insc.comprobante_url)}
+                            className="bg-white/10 text-white px-2 py-1 flex items-center gap-1 hover:bg-white/20 transition-colors"
+                          >
+                             <Eye size={10} /> VER
+                          </button>
+                          {insc.comprobante_verificado ? (
+                            <span className="text-[7px] text-neon-green font-bold">✅ VERIFICADO</span>
+                          ) : (
+                            <button
+                              onClick={async () => {
+                                if (confirm('¿Marcar este comprobante como verificado?')) {
+                                   await verifyComprobante(insc.id);
+                                   fetchData();
+                                }
+                              }}
+                              className="text-[7px] text-yellow-400 underline uppercase"
+                            >
+                               Validar Pago
+                            </button>
+                          )}
+                        </div>
+                      ) : (
+                        <span className="text-white/20 italic">Sin comprobante</span>
+                      )}
+                    </td>
+                    <td className="p-3 border-r border-white/10">
                       <input
                         type="text"
                         value={insc?.observaciones || ''}
@@ -293,6 +382,36 @@ export default function PagosTab() {
                         className="w-full bg-transparent outline-none text-[9px] focus:placeholder-transparent"
                       />
                     </td>
+                    <td className="p-3">
+                      {insc && (
+                        <div className="flex gap-2 justify-center">
+                          {insc.estado !== 'aprobado' && (
+                            <button
+                              onClick={async () => {
+                                await updateInscripcionEstado(insc.id, 'aprobado');
+                                fetchData();
+                              }}
+                              className="p-1.5 bg-neon-green text-black hover:scale-110 transition-transform"
+                              title="Aprobar Inscripción"
+                            >
+                              <CheckCircle size={14} />
+                            </button>
+                          )}
+                          {insc.estado !== 'rechazado' && (
+                            <button
+                              onClick={async () => {
+                                await updateInscripcionEstado(insc.id, 'rechazado');
+                                fetchData();
+                              }}
+                              className="p-1.5 bg-hot-pink text-white hover:scale-110 transition-transform"
+                              title="Rechazar Inscripción"
+                            >
+                              <XCircle size={14} />
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </td>
                   </tr>
                 );
               })
@@ -300,6 +419,43 @@ export default function PagosTab() {
           </tbody>
         </table>
       </div>
+
+      {/* Receipt Viewer Modal */}
+      {selectedComprobante && (
+        <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4">
+          <div className="bg-[#131313] border-4 border-white max-w-2xl w-full max-h-[90vh] flex flex-col shadow-brutal">
+            <div className="p-4 border-b-2 border-white flex justify-between items-center bg-white/5">
+              <h3 className="font-anton text-xl tracking-wider text-white uppercase italic">COMPROBANTE DE PAGO</h3>
+              <button onClick={() => setSelectedComprobante(null)} className="p-2 hover:bg-hot-pink transition-colors">
+                <X size={24} />
+              </button>
+            </div>
+            <div className="flex-1 overflow-auto p-4 flex justify-center bg-black/50">
+              <img
+                src={selectedComprobante}
+                alt="Comprobante"
+                className="max-w-full h-auto object-contain border border-white/10"
+              />
+            </div>
+            <div className="p-4 border-t-2 border-white flex justify-end gap-4 bg-white/5">
+               <button
+                  onClick={() => setSelectedComprobante(null)}
+                  className="px-6 py-2 border-2 border-white font-anton uppercase text-sm hover:bg-white hover:text-black transition-colors"
+                >
+                  Cerrar
+                </button>
+                <a
+                  href={selectedComprobante}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="px-6 py-2 bg-neon-green text-black font-anton uppercase text-sm hover:scale-105 transition-transform"
+                >
+                  Abrir Original
+                </a>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
