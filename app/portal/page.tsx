@@ -11,12 +11,12 @@ export default async function PortalPage() {
   console.log('Portal Debug - User:', user?.email, 'Error:', error?.message);
 
   if (!user) {
-    redirect('/login');
+    return redirect('/login');
   }
 
   const ADMIN_EMAIL = 'clubdepatinajetravesia@gmail.com';
   if (user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
-    redirect('/dashboard');
+    return redirect('/dashboard');
   }
 
   const alumno = await getAlumnoByEmail(user.email!);

@@ -60,10 +60,10 @@ export async function loginAction(_prevState: unknown, formData: FormData) {
   // Redirección fuera del try/catch
   const ADMIN_EMAIL = 'clubdepatinajetravesia@gmail.com'
   if (data.user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
-    redirect('/dashboard')
+    return redirect('/dashboard')
   }
 
-  redirect('/portal')
+  return redirect('/portal')
 }
 
 export async function registrarAlumno(_prevState: unknown, formData: FormData) {
@@ -144,12 +144,12 @@ export async function registrarAlumno(_prevState: unknown, formData: FormData) {
   revalidatePath('/', 'layout')
   revalidatePath('/portal')
 
-  redirect('/portal')
+  return redirect('/portal')
 }
 
 export async function signOut() {
   const supabase = await createServerClient()
   await supabase.auth.signOut()
   revalidatePath('/', 'layout')
-  redirect('/')
+  return redirect('/')
 }

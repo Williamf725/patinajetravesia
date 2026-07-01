@@ -7,8 +7,7 @@ import { registrarAlumno } from '@/app/auth/actions';
 
 export default function RegistroPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [isPending, setIsPending] = useState(false);
-  const [state, formAction] = useActionState(registrarAlumno, null);
+  const [state, formAction, isPending] = useActionState(registrarAlumno, null);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -36,14 +35,12 @@ export default function RegistroPage() {
     }
 
     setFieldErrors({});
-    setIsPending(true);
 
-    // Enviar al server action
-    formAction(formData);
-    // Nota: useActionState maneja la transición, pero como queremos control total del loading
-    // y redirigir si es exitoso, podríamos necesitar más lógica, pero registrarAlumno ya redirige.
-    // Si hay error, useActionState actualizará 'state'.
-    setIsPending(false);
+    // Enviar al server action vía formAction
+    // React maneja el estado isPending automáticamente con useActionState
+    React.startTransition(() => {
+      formAction(formData);
+    });
   };
 
   // Mezclar errores de cliente y servidor
@@ -78,6 +75,7 @@ export default function RegistroPage() {
               <input
                 name="nombre"
                 type="text"
+                required
                 className={`bg-transparent border-b-2 p-2 text-white outline-none transition-all font-mono text-sm ${allFieldErrors.nombre ? 'border-hot-pink' : 'border-white/20 focus:border-neon-green'}`}
                 placeholder="EJ. JUAN"
               />
@@ -88,6 +86,7 @@ export default function RegistroPage() {
               <input
                 name="apellido"
                 type="text"
+                required
                 className={`bg-transparent border-b-2 p-2 text-white outline-none transition-all font-mono text-sm ${allFieldErrors.apellido ? 'border-hot-pink' : 'border-white/20 focus:border-neon-green'}`}
                 placeholder="EJ. PÉREZ"
               />
@@ -100,6 +99,7 @@ export default function RegistroPage() {
             <input
               name="email"
               type="email"
+              required
               className={`bg-transparent border-b-2 p-2 text-white outline-none transition-all font-mono text-sm ${allFieldErrors.email ? 'border-hot-pink' : 'border-white/20 focus:border-neon-green'}`}
               placeholder="alumno@travesia.club"
             />
@@ -121,6 +121,7 @@ export default function RegistroPage() {
               <input
                 name="password"
                 type="password"
+                required
                 className={`bg-transparent border-b-2 p-2 text-white outline-none transition-all font-mono text-sm ${allFieldErrors.password ? 'border-hot-pink' : 'border-white/20 focus:border-neon-green'}`}
                 placeholder="••••••••"
               />
@@ -131,6 +132,7 @@ export default function RegistroPage() {
               <input
                 name="confirmPassword"
                 type="password"
+                required
                 className={`bg-transparent border-b-2 p-2 text-white outline-none transition-all font-mono text-sm ${allFieldErrors.confirmPassword ? 'border-hot-pink' : 'border-white/20 focus:border-neon-green'}`}
                 placeholder="••••••••"
               />

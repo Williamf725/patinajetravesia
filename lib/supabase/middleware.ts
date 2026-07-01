@@ -47,6 +47,7 @@ export async function updateSession(request: NextRequest) {
 
   // 1. If not logged in and trying to access any protected route
   if (!user && isProtectedRoute) {
+    console.log('Middleware: Unauthenticated access to protected route, redirecting to /login');
     const url = request.nextUrl.clone()
     url.pathname = '/login'
     return NextResponse.redirect(url)
@@ -57,6 +58,7 @@ export async function updateSession(request: NextRequest) {
 
     // 2. If logged in but NOT admin and trying to access ADMIN routes
     if (isAdminRoute && !isUserAdmin) {
+      console.log('Middleware: Non-admin trying to access admin route, redirecting to /portal');
       const url = request.nextUrl.clone()
       url.pathname = '/portal'
       return NextResponse.redirect(url)
@@ -64,6 +66,7 @@ export async function updateSession(request: NextRequest) {
 
     // 3. If admin and trying to access PORTAL routes
     if (isPortalRoute && isUserAdmin) {
+      console.log('Middleware: Admin trying to access portal route, redirecting to /dashboard');
       const url = request.nextUrl.clone()
       url.pathname = '/dashboard'
       return NextResponse.redirect(url)
