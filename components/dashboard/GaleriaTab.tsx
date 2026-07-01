@@ -39,7 +39,7 @@ export default function GaleriaTab() {
           formData.append('file', file);
           formData.append('signature', signature);
           formData.append('timestamp', timestamp.toString());
-          formData.append('api_key', api_key);
+          if (api_key) formData.append('api_key', api_key);
           formData.append('folder', 'travesia-club');
 
           xhr.open('POST', `https://api.cloudinary.com/v1_1/${cloud_name}/auto/upload`, true);

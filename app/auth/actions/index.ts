@@ -2,7 +2,7 @@
 
 import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
-import { createClient } from '@/lib/supabase/server'
+import { createServerClient } from '@/lib/supabase/server'
 import { headers } from 'next/headers'
 import { enviarBienvenida } from '@/lib/email/resend'
 
@@ -14,22 +14,28 @@ export async function loginAction(_prevState: unknown, formData: FormData) {
     return { error: 'Completa todos los campos' }
   }
 
-  const supabase = await createClient()
+  const supabase = await createServerClient()
 
-  const { data, error } = await supabase.auth.signInWithPassword({
+  const { data, error: loginError } = await supabase.auth.signInWithPassword({
     email,
     password,
   })
 
-  if (error) {
-    console.error('Login error:', error.message, error.code)
-    if (error.message.includes('Invalid login credentials')) {
-      return { error: 'Correo o contraseña incorrectos' }
+  if (loginError) {
+    const msg = loginError.message.toLowerCase()
+
+    if (msg.includes('invalid login credentials') || msg.includes('invalid credentials')) {
+      return { error: 'Correo o contraseña incorrectos.' }
     }
-    if (error.message.includes('Email not confirmed')) {
-      return { error: 'Debes confirmar tu correo antes de iniciar sesión' }
+    if (msg.includes('email not confirmed')) {
+      return { error: 'Debes confirmar tu correo antes de entrar.' }
     }
-    return { error: 'Error al iniciar sesión. Intenta de nuevo' }
+    if (msg.includes('too many requests') || loginError.code === 'over_request_rate_limit') {
+      return { error: 'Demasiados intentos. Espera unos minutos e intenta de nuevo.' }
+    }
+
+    console.error('Login error:', loginError.code, loginError.message)
+    return { error: 'Error al iniciar sesión. Intenta de nuevo.' }
   }
 
   if (!data.user) {
@@ -60,16 +66,16 @@ export async function loginAction(_prevState: unknown, formData: FormData) {
   redirect('/portal')
 }
 
-export async function registrarAlumno(formData: FormData) {
-  const supabase = await createClient()
+export async function registrarAlumno(_prevState: unknown, formData: FormData) {
+  const supabase = await createServerClient()
 
-  const email = formData.get('email') as string
+  const email = (formData.get('email') as string)?.toLowerCase()
   const password = formData.get('password') as string
   const nombre = formData.get('nombre') as string
   const apellido = formData.get('apellido') as string
 
   if (!email || !password || !nombre || !apellido) {
-    throw new Error('El nombre y apellido son obligatorios')
+    return { error: 'Todos los campos son obligatorios.', field: 'general' }
   }
 
   // 1. Create Auth User
@@ -85,29 +91,47 @@ export async function registrarAlumno(formData: FormData) {
   })
 
   if (authError) {
-    if (authError.message.includes('User already registered') || authError.code === 'user_already_exists' || authError.message.includes('Email already in use')) {
-      throw new Error('Ya existe una cuenta con este correo.')
+    const msg = authError.message.toLowerCase()
+    const code = authError.code
+
+    if (
+      msg.includes('user already registered') ||
+      msg.includes('already been registered') ||
+      msg.includes('email already in use') ||
+      code === 'user_already_exists' ||
+      code === 'email_exists'
+    ) {
+      return { error: 'Este correo ya tiene una cuenta registrada.', field: 'email', showLogin: true }
     }
-    throw new Error('Ocurrió un error al crear tu cuenta. Intenta de nuevo')
+
+    if (msg.includes('invalid email') || code === 'invalid_email') {
+      return { error: 'El correo electrónico no es válido.', field: 'email' }
+    }
+
+    if (msg.includes('password') && msg.includes('weak')) {
+      return { error: 'La contraseña es muy débil. Usa mínimo 6 caracteres con números.', field: 'password' }
+    }
+
+    console.error('Auth error desconocido:', authError.code, authError.message)
+    return { error: `Error al crear la cuenta: ${authError.message}`, field: 'general' }
   }
-  if (!authData.user) throw new Error('Error al crear usuario')
+
+  if (!authData.user) return { error: 'Error al crear usuario', field: 'general' }
 
   // 2. Create Alumno Record
   const { error: alumnoError } = await supabase.from('alumnos').insert({
     nombre,
     apellido,
     nombre_completo: `${nombre} ${apellido}`,
-    email: email.toLowerCase(),
+    email: email,
     activo: true,
   })
 
   if (alumnoError) {
     if (alumnoError.code === '23505') {
-       throw new Error('Este correo ya está registrado como alumno.')
+       return { error: 'Este correo ya está registrado como alumno.', field: 'email', showLogin: true }
     }
     console.error('Error creating alumno record:', alumnoError)
-    // We don't throw here to avoid blocking registration if auth succeeded but record failed,
-    // but the requirement says to show specific errors.
   }
 
   // 3. Send Welcome Email
@@ -120,14 +144,11 @@ export async function registrarAlumno(formData: FormData) {
   revalidatePath('/', 'layout')
   revalidatePath('/portal')
 
-  // Requirement: "Redirigir directo a /portal sin esperar confirmación de correo"
-  // signUp usually logs in if email confirmation is disabled, or we can follow up with login.
-  // We'll redirect to /portal and the middleware/page logic will handle the session.
   redirect('/portal')
 }
 
 export async function signOut() {
-  const supabase = await createClient()
+  const supabase = await createServerClient()
   await supabase.auth.signOut()
   revalidatePath('/', 'layout')
   redirect('/')

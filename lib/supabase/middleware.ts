@@ -29,27 +29,45 @@ export async function updateSession(request: NextRequest) {
     }
   )
 
+  // IMPORTANT: Always use getUser() instead of getSession()
   const {
     data: { user },
   } = await supabase.auth.getUser()
 
   const isProtectedRoute =
     request.nextUrl.pathname.startsWith('/dashboard') ||
+    request.nextUrl.pathname.startsWith('/admin') ||
+    request.nextUrl.pathname.startsWith('/portal');
+
+  const isAdminRoute =
+    request.nextUrl.pathname.startsWith('/dashboard') ||
     request.nextUrl.pathname.startsWith('/admin');
 
-  // If not logged in and trying to access protected route
+  const isPortalRoute = request.nextUrl.pathname.startsWith('/portal');
+
+  // 1. If not logged in and trying to access any protected route
   if (!user && isProtectedRoute) {
     const url = request.nextUrl.clone()
-    url.pathname = '/'
+    url.pathname = '/login'
     return NextResponse.redirect(url)
   }
 
-  // If logged in but NOT the authorized admin, sign out and redirect
-  if (user && isProtectedRoute && user.email?.toLowerCase() !== ADMIN_EMAIL.toLowerCase()) {
-    await supabase.auth.signOut();
-    const url = request.nextUrl.clone()
-    url.pathname = '/'
-    return NextResponse.redirect(url)
+  if (user) {
+    const isUserAdmin = user.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
+
+    // 2. If logged in but NOT admin and trying to access ADMIN routes
+    if (isAdminRoute && !isUserAdmin) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/portal'
+      return NextResponse.redirect(url)
+    }
+
+    // 3. If admin and trying to access PORTAL routes
+    if (isPortalRoute && isUserAdmin) {
+      const url = request.nextUrl.clone()
+      url.pathname = '/dashboard'
+      return NextResponse.redirect(url)
+    }
   }
 
   return supabaseResponse

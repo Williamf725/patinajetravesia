@@ -1,16 +1,20 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useActionState } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { registrarAlumno } from '@/app/auth/actions';
 
 export default function RegistroPage() {
-  const [error, setError] = useState<string | null>(null);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [loading, setLoading] = useState(false);
+  const [isPending, setIsPending] = useState(false);
+  const [state, formAction] = useActionState(registrarAlumno, null);
 
-  const validateForm = (formData: FormData) => {
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const formData = new FormData(e.currentTarget);
+
+    // Validaciones en el cliente
     const errors: Record<string, string> = {};
     const nombre = formData.get('nombre') as string;
     const apellido = formData.get('apellido') as string;
@@ -18,54 +22,35 @@ export default function RegistroPage() {
     const password = formData.get('password') as string;
     const confirmPassword = formData.get('confirmPassword') as string;
 
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) errors.email = 'Correo electrónico inválido';
+    if (password.length < 6) errors.password = 'Mínimo 6 caracteres';
+    if (!/\d/.test(password)) errors.password = 'Debe incluir al menos un número';
+    if (password !== confirmPassword) errors.confirmPassword = 'Las contraseñas no coinciden';
     if (!nombre.trim()) errors.nombre = 'El nombre es obligatorio';
     if (!apellido.trim()) errors.apellido = 'El apellido es obligatorio';
 
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-    if (!emailRegex.test(email)) {
-      errors.email = 'Ingresa un correo electrónico válido';
-    }
-
-    if (password.length < 6) {
-      errors.password = 'La contraseña debe tener mínimo 6 caracteres';
-    } else if (!/\d/.test(password)) {
-      errors.password = 'La contraseña debe incluir al menos un número';
-    }
-
-    if (password !== confirmPassword) {
-      errors.confirmPassword = 'Las contraseñas no coinciden';
-    }
-
-    return errors;
-  };
-
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-
-    const errors = validateForm(formData);
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
-      setError(null);
       return;
     }
 
     setFieldErrors({});
-    setError(null);
-    setLoading(true);
+    setIsPending(true);
 
-    try {
-      await registrarAlumno(formData);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Error al registrarse';
-      if (msg.includes('correo') || msg.includes('cuenta')) {
-        setFieldErrors({ email: msg });
-      } else {
-        setError(msg);
-      }
-      setLoading(false);
-    }
+    // Enviar al server action
+    formAction(formData);
+    // Nota: useActionState maneja la transición, pero como queremos control total del loading
+    // y redirigir si es exitoso, podríamos necesitar más lógica, pero registrarAlumno ya redirige.
+    // Si hay error, useActionState actualizará 'state'.
+    setIsPending(false);
   };
+
+  // Mezclar errores de cliente y servidor
+  const allFieldErrors = { ...fieldErrors };
+  if (state?.field && state.error) {
+    allFieldErrors[state.field] = state.error;
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-black relative pt-20">
@@ -93,22 +78,20 @@ export default function RegistroPage() {
               <input
                 name="nombre"
                 type="text"
-                required
-                className={`bg-transparent border-b-2 p-2 text-white outline-none transition-all font-mono text-sm ${fieldErrors.nombre ? 'border-hot-pink' : 'border-white/20 focus:border-neon-green'}`}
+                className={`bg-transparent border-b-2 p-2 text-white outline-none transition-all font-mono text-sm ${allFieldErrors.nombre ? 'border-hot-pink' : 'border-white/20 focus:border-neon-green'}`}
                 placeholder="EJ. JUAN"
               />
-              {fieldErrors.nombre && <span className="text-hot-pink font-mono text-[9px] uppercase tracking-tighter">{fieldErrors.nombre}</span>}
+              {allFieldErrors.nombre && <span className="text-hot-pink font-mono text-[9px] uppercase tracking-tighter">{allFieldErrors.nombre}</span>}
             </div>
             <div className="flex flex-col gap-1">
               <label className="font-mono text-[10px] text-neon-green uppercase tracking-[0.2em] font-bold">Apellido</label>
               <input
                 name="apellido"
                 type="text"
-                required
-                className={`bg-transparent border-b-2 p-2 text-white outline-none transition-all font-mono text-sm ${fieldErrors.apellido ? 'border-hot-pink' : 'border-white/20 focus:border-neon-green'}`}
+                className={`bg-transparent border-b-2 p-2 text-white outline-none transition-all font-mono text-sm ${allFieldErrors.apellido ? 'border-hot-pink' : 'border-white/20 focus:border-neon-green'}`}
                 placeholder="EJ. PÉREZ"
               />
-              {fieldErrors.apellido && <span className="text-hot-pink font-mono text-[9px] uppercase tracking-tighter">{fieldErrors.apellido}</span>}
+              {allFieldErrors.apellido && <span className="text-hot-pink font-mono text-[9px] uppercase tracking-tighter">{allFieldErrors.apellido}</span>}
             </div>
           </div>
 
@@ -117,11 +100,19 @@ export default function RegistroPage() {
             <input
               name="email"
               type="email"
-              required
-              className={`bg-transparent border-b-2 p-2 text-white outline-none transition-all font-mono text-sm ${fieldErrors.email ? 'border-hot-pink' : 'border-white/20 focus:border-neon-green'}`}
+              className={`bg-transparent border-b-2 p-2 text-white outline-none transition-all font-mono text-sm ${allFieldErrors.email ? 'border-hot-pink' : 'border-white/20 focus:border-neon-green'}`}
               placeholder="alumno@travesia.club"
             />
-            {fieldErrors.email && <span className="text-hot-pink font-mono text-[9px] uppercase tracking-tighter">{fieldErrors.email}</span>}
+            {allFieldErrors.email && (
+              <div className="flex flex-col gap-1">
+                <span className="text-hot-pink font-mono text-[9px] uppercase tracking-tighter">{allFieldErrors.email}</span>
+                {state?.showLogin && (
+                  <Link href="/login" className="text-neon-green font-mono text-[9px] uppercase underline">
+                    Inicia sesión aquí
+                  </Link>
+                )}
+              </div>
+            )}
           </div>
 
           <div className="grid grid-cols-2 gap-4">
@@ -130,46 +121,41 @@ export default function RegistroPage() {
               <input
                 name="password"
                 type="password"
-                required
-                className={`bg-transparent border-b-2 p-2 text-white outline-none transition-all font-mono text-sm ${fieldErrors.password ? 'border-hot-pink' : 'border-white/20 focus:border-neon-green'}`}
+                className={`bg-transparent border-b-2 p-2 text-white outline-none transition-all font-mono text-sm ${allFieldErrors.password ? 'border-hot-pink' : 'border-white/20 focus:border-neon-green'}`}
                 placeholder="••••••••"
               />
-              {fieldErrors.password && <span className="text-hot-pink font-mono text-[9px] uppercase tracking-tighter">{fieldErrors.password}</span>}
+              {allFieldErrors.password && <span className="text-hot-pink font-mono text-[9px] uppercase tracking-tighter">{allFieldErrors.password}</span>}
             </div>
             <div className="flex flex-col gap-1">
               <label className="font-mono text-[10px] text-neon-green uppercase tracking-[0.2em] font-bold">Confirmar</label>
               <input
                 name="confirmPassword"
                 type="password"
-                required
-                className={`bg-transparent border-b-2 p-2 text-white outline-none transition-all font-mono text-sm ${fieldErrors.confirmPassword ? 'border-hot-pink' : 'border-white/20 focus:border-neon-green'}`}
+                className={`bg-transparent border-b-2 p-2 text-white outline-none transition-all font-mono text-sm ${allFieldErrors.confirmPassword ? 'border-hot-pink' : 'border-white/20 focus:border-neon-green'}`}
                 placeholder="••••••••"
               />
-              {fieldErrors.confirmPassword && <span className="text-hot-pink font-mono text-[9px] uppercase tracking-tighter">{fieldErrors.confirmPassword}</span>}
+              {allFieldErrors.confirmPassword && <span className="text-hot-pink font-mono text-[9px] uppercase tracking-tighter">{allFieldErrors.confirmPassword}</span>}
             </div>
           </div>
 
-          {error && (
+          {state?.error && state.field === 'general' && (
             <div className="p-3 bg-hot-pink/10 border-l-4 border-hot-pink text-hot-pink font-mono text-[10px] uppercase">
-              {error}
+              {state.error}
             </div>
           )}
 
           <button
-            disabled={loading}
+            type="submit"
+            disabled={isPending}
             className="btn-tape w-full py-4 mt-4 text-xl tracking-widest font-anton disabled:opacity-50"
           >
-            {loading ? 'CREANDO CUENTA...' : 'UNIRSE AL CLUB'}
+            {isPending ? 'PROCESANDO...' : 'UNIRSE AL CLUB'}
           </button>
         </form>
 
         <div className="mt-8 text-center">
            <p className="font-mono text-[10px] text-white/40 uppercase">
-             {error && error.includes('Ya existe una cuenta') ? (
-               <>¿YA TIENES CUENTA? <Link href="/login" className="text-neon-green hover:underline">INICIA SESIÓN AQUÍ</Link></>
-             ) : (
-               <>¿YA TIENES CUENTA? <Link href="/login" className="text-neon-green hover:underline">INGRESA AQUÍ</Link></>
-             )}
+             ¿YA TIENES CUENTA? <Link href="/login" className="text-neon-green hover:underline">INGRESA AQUÍ</Link>
            </p>
         </div>
       </motion.div>

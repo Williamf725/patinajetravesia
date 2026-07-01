@@ -58,7 +58,7 @@ export default function MiPlanTab({ alumno, planes, inscripcionActual }: Props) 
       formData.append('file', file);
       formData.append('signature', signature);
       formData.append('timestamp', timestamp.toString());
-      formData.append('api_key', api_key);
+      if (api_key) formData.append('api_key', api_key);
       formData.append('folder', 'comprobantes');
 
       const res = await fetch(`https://api.cloudinary.com/v1_1/${cloud_name}/auto/upload`, {

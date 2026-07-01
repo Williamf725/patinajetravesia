@@ -1,10 +1,10 @@
-import { createServerClient } from '@supabase/ssr'
+import { createServerClient as createSupabaseServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 
-export async function createClient() {
+export async function createServerClient() {
   const cookieStore = await cookies()
 
-  return createServerClient(
+  return createSupabaseServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -27,3 +27,6 @@ export async function createClient() {
     }
   )
 }
+
+// Keep createClient as an alias for backward compatibility for now, but mark it deprecated if possible or just export it.
+export const createClient = createServerClient;

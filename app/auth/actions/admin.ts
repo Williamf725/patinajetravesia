@@ -1,13 +1,13 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createServerClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { enviarPlanAprobado, enviarPlanRechazado } from '@/lib/email/resend'
 
 const ADMIN_EMAIL = 'clubdepatinajetravesia@gmail.com'
 
 async function checkAdmin() {
-  const supabase = await createClient()
+  const supabase = await createServerClient()
   const { data: { user } } = await supabase.auth.getUser()
   if (user?.email !== ADMIN_EMAIL) {
     throw new Error('Unauthorized')
@@ -25,7 +25,7 @@ export async function savePagosChanges(pagos: {
   observaciones: string | null;
 }[]) {
   await checkAdmin()
-  const supabase = await createClient()
+  const supabase = await createServerClient()
 
   const { error } = await supabase
     .from('inscripciones')
@@ -37,7 +37,7 @@ export async function savePagosChanges(pagos: {
 
 export async function verifyComprobante(id: string) {
   await checkAdmin()
-  const supabase = await createClient()
+  const supabase = await createServerClient()
 
   const { error } = await supabase
     .from('inscripciones')
@@ -50,7 +50,7 @@ export async function verifyComprobante(id: string) {
 
 export async function updateInscripcionEstado(id: string, estado: 'aprobado' | 'rechazado' | 'pendiente') {
   await checkAdmin()
-  const supabase = await createClient()
+  const supabase = await createServerClient()
 
   const { data: inscripcion } = await supabase
     .from('inscripciones')
@@ -95,7 +95,7 @@ export async function updateInscripcionEstado(id: string, estado: 'aprobado' | '
 
 export async function updateClasesUsadas(id: string, clases_usadas: number) {
   await checkAdmin()
-  const supabase = await createClient()
+  const supabase = await createServerClient()
 
   const { error } = await supabase
     .from('inscripciones')
@@ -108,7 +108,7 @@ export async function updateClasesUsadas(id: string, clases_usadas: number) {
 
 export async function getInscripciones() {
   await checkAdmin()
-  const supabase = await createClient()
+  const supabase = await createServerClient()
 
   const { data } = await supabase
     .from('inscripciones')

@@ -1,11 +1,11 @@
 'use server'
 
-import { createClient } from '@/lib/supabase/server'
+import { createServerClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { enviarConfirmacionPlan, enviarNotificacionAdmin, enviarPlanPorAcabar } from '@/lib/email/resend'
 
 export async function getAlumnoByEmail(email: string) {
-  const supabase = await createClient()
+  const supabase = await createServerClient()
   const { data, error } = await supabase
     .from('alumnos')
     .select('*')
@@ -17,7 +17,7 @@ export async function getAlumnoByEmail(email: string) {
 }
 
 export async function selectPlan(alumnoId: string, planId: string) {
-  const supabase = await createClient()
+  const supabase = await createServerClient()
 
   const now = new Date()
   const mes = now.toLocaleString('es-ES', { month: 'long' }).toLowerCase()
@@ -73,13 +73,13 @@ export async function selectPlan(alumnoId: string, planId: string) {
 }
 
 export async function getPlanes() {
-  const supabase = await createClient()
+  const supabase = await createServerClient()
   const { data } = await supabase.from('planes').select('*').order('precio', { ascending: true })
   return data || []
 }
 
 export async function getInscripcionActual(alumnoId: string) {
-  const supabase = await createClient()
+  const supabase = await createServerClient()
   const now = new Date()
   const mes = now.toLocaleString('es-ES', { month: 'long' }).toLowerCase()
   const anio = now.getFullYear()
@@ -146,7 +146,7 @@ export async function getInscripcionActual(alumnoId: string) {
 }
 
 export async function getHistorialInscripciones(alumnoId: string) {
-  const supabase = await createClient()
+  const supabase = await createServerClient()
   const { data } = await supabase
     .from('inscripciones')
     .select('*, plan:planes(*)')
@@ -157,7 +157,7 @@ export async function getHistorialInscripciones(alumnoId: string) {
 }
 
 export async function updateComprobante(inscripcionId: string, url: string) {
-  const supabase = await createClient()
+  const supabase = await createServerClient()
   const { error } = await supabase
     .from('inscripciones')
     .update({
@@ -171,7 +171,7 @@ export async function updateComprobante(inscripcionId: string, url: string) {
 }
 
 export async function cambiarPlan(inscripcionId: string, planId: string) {
-  const supabase = await createClient()
+  const supabase = await createServerClient()
 
   const { data: plan } = await supabase.from('planes').select('*').eq('id', planId).single()
   if (!plan) throw new Error('Plan no encontrado')

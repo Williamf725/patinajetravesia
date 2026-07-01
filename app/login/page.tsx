@@ -14,7 +14,7 @@ function SubmitButton() {
       disabled={pending}
       className="btn-tape w-full py-4 mt-4 text-xl tracking-widest font-anton disabled:opacity-50"
     >
-      {pending ? 'VERIFICANDO...' : 'INGRESAR'}
+      {pending ? 'PROCESANDO...' : 'INGRESAR'}
     </button>
   );
 }
