@@ -1,9 +1,40 @@
 'use server'
 
+import { v2 as cloudinary } from 'cloudinary'
 import { createServerClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 
 const ADMIN_EMAIL = 'clubdepatinajetravesia@gmail.com'
+
+cloudinary.config({
+  cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+})
+
+export async function getSignaturaComprobante() {
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) throw new Error('No autorizado')
+
+  const timestamp = Math.round(Date.now() / 1000)
+  const folder = 'comprobantes'
+  const paramsToSign = { timestamp, folder }
+
+  const signature = cloudinary.utils.api_sign_request(
+    paramsToSign,
+    process.env.CLOUDINARY_API_SECRET!
+  )
+
+  return {
+    signature,
+    timestamp,
+    apiKey: process.env.CLOUDINARY_API_KEY!,
+    cloudName: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME!,
+    folder
+  }
+}
 
 export async function getCloudinarySignature() {
   const supabase = await createServerClient()
@@ -12,18 +43,18 @@ export async function getCloudinarySignature() {
   if (!user || user.email !== ADMIN_EMAIL) throw new Error('Unauthorized')
 
   const timestamp = Math.round(new Date().getTime() / 1000)
-  const signature = (await import('cloudinary')).v2.utils.api_sign_request(
-    {
-      timestamp,
-      folder: 'travesia-club'
-    },
+  const folder = 'travesia-club'
+  const paramsToSign = { timestamp, folder }
+
+  const signature = cloudinary.utils.api_sign_request(
+    paramsToSign,
     process.env.CLOUDINARY_API_SECRET!
   )
 
   return {
     signature,
     timestamp,
-    api_key: process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY,
+    api_key: process.env.CLOUDINARY_API_KEY,
     cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
   }
 }
@@ -53,14 +84,7 @@ export async function deleteFromCloudinary(publicId: string, id: string) {
     throw new Error('Unauthorized')
   }
 
-  const cloudinary = (await import('cloudinary')).v2
-  cloudinary.config({
-    cloud_name: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME,
-    api_key: process.env.NEXT_PUBLIC_CLOUDINARY_API_KEY,
-    api_secret: process.env.CLOUDINARY_API_SECRET,
-  })
-
-  // 1. Delete from Cloudinary
+  // Use the pre-configured cloudinary instance
   await cloudinary.uploader.destroy(publicId)
 
   // 2. Delete from Supabase

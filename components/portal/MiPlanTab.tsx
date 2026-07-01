@@ -3,8 +3,9 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Plan, Inscripcion, Alumno } from '@/types/database';
-import { selectPlan, updateComprobante, cambiarPlan } from '@/app/auth/actions/portal';
-import { getCloudinarySignature } from '@/app/auth/actions/cloudinary';
+import { selectPlan, cambiarPlan } from '@/app/auth/actions/portal';
+import { getSignaturaComprobante } from '@/app/auth/actions/cloudinary';
+import { createClient } from '@/lib/supabase/client';
 import { CheckCircle2, Clock, XCircle, Info, AlertTriangle, CreditCard, Copy, Upload, RefreshCw } from 'lucide-react';
 
 interface Props {
@@ -17,6 +18,9 @@ export default function MiPlanTab({ alumno, planes, inscripcionActual }: Props) 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPlanChange, setShowPlanChange] = useState(false);
   const [uploadingComprobante, setUploadingComprobante] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const supabase = createClient();
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -26,12 +30,13 @@ export default function MiPlanTab({ alumno, planes, inscripcionActual }: Props) 
   const handleSelectPlan = async (plan: Plan) => {
     if (isSubmitting) return;
     setIsSubmitting(true);
+    setError(null);
     try {
       await selectPlan(alumno.id, plan.id);
       const msg = `Hola, acabo de escoger el plan *${plan.nombre}* en el portal. Mi nombre es *${alumno.nombre_completo}*.`;
       window.open(`https://wa.me/573222508676?text=${encodeURIComponent(msg)}`, '_blank');
     } catch (err) {
-      alert(err instanceof Error ? err.message : 'Error al seleccionar plan');
+      setError(err instanceof Error ? err.message : 'Error al seleccionar plan');
     } finally {
       setIsSubmitting(false);
     }
@@ -50,30 +55,55 @@ export default function MiPlanTab({ alumno, planes, inscripcionActual }: Props) 
     const file = e.target.files?.[0];
     if (!file || !inscripcionActual) return;
 
+    setError(null);
+    const formatosValidos = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
+
+    if (!formatosValidos.includes(file.type)) {
+      setError('Formato no válido. Usa JPG, PNG, WEBP, GIF o PDF');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      setError('El archivo no puede superar 10MB');
+      return;
+    }
+
     setUploadingComprobante(true);
     try {
-      const { signature, timestamp, api_key, cloud_name } = await getCloudinarySignature();
+      const { signature, timestamp, apiKey, cloudName, folder } = await getSignaturaComprobante();
 
       const formData = new FormData();
       formData.append('file', file);
-      formData.append('signature', signature);
+      formData.append('api_key', apiKey);
       formData.append('timestamp', timestamp.toString());
-      if (api_key) formData.append('api_key', api_key);
-      formData.append('folder', 'comprobantes');
+      formData.append('signature', signature);
+      formData.append('folder', folder);
 
-      const res = await fetch(`https://api.cloudinary.com/v1_1/${cloud_name}/auto/upload`, {
-        method: 'POST',
-        body: formData,
-      });
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`,
+        { method: 'POST', body: formData }
+      );
 
-      const data = await res.json();
-      if (data.secure_url) {
-        await updateComprobante(inscripcionActual.id, data.secure_url);
+      const resultado = await response.json();
+      if (!response.ok) throw new Error(resultado.error?.message || 'Error al subir');
+
+      if (resultado.secure_url) {
+        const { error: updateError } = await supabase
+          .from('inscripciones')
+          .update({
+            comprobante_url: resultado.secure_url,
+            estado: 'pendiente',
+            comprobante_verificado: false
+          })
+          .eq('id', inscripcionActual.id);
+
+        if (updateError) throw updateError;
         alert('Comprobante subido con éxito');
+        window.location.reload();
       }
     } catch (err) {
       console.error(err);
-      alert('Error al subir comprobante');
+      setError(err instanceof Error ? err.message : 'Error al subir comprobante');
     } finally {
       setUploadingComprobante(false);
     }
@@ -82,12 +112,14 @@ export default function MiPlanTab({ alumno, planes, inscripcionActual }: Props) 
   const handleChangePlan = async (plan: Plan) => {
     if (!inscripcionActual) return;
     setIsSubmitting(true);
+    setError(null);
     try {
       await cambiarPlan(inscripcionActual.id, plan.id);
       setShowPlanChange(false);
       alert('Plan actualizado con éxito');
+      window.location.reload();
     } catch {
-      alert('Error al cambiar plan');
+      setError('Error al cambiar plan');
     } finally {
       setIsSubmitting(false);
     }
@@ -169,7 +201,7 @@ export default function MiPlanTab({ alumno, planes, inscripcionActual }: Props) 
                            {/* eslint-disable-next-line @next/next/no-img-element */}
                            <img src={inscripcionActual.comprobante_url} alt="Comprobante" className="object-cover w-full h-full" />
                         </div>
-                        <div className="space-y-2">
+                        <div className="space-y-2 text-left">
                           <p className={`font-anton text-xs uppercase ${inscripcionActual.comprobante_verificado ? 'text-neon-green' : 'text-yellow-400'}`}>
                             {inscripcionActual.comprobante_verificado ? '✅ Pago Verificado' : 'Comprobante enviado — pendiente de verificación'}
                           </p>
@@ -182,13 +214,19 @@ export default function MiPlanTab({ alumno, planes, inscripcionActual }: Props) 
                         </div>
                       </div>
                     ) : (
-                      <div className="space-y-4">
+                      <div className="space-y-4 text-left">
                         <p className="font-anton text-xs text-white/20 uppercase">Sin comprobante</p>
                         <label className="btn-tape text-xs py-3 cursor-pointer inline-flex items-center gap-2">
                           {uploadingComprobante ? 'SUBIENDO...' : 'SUBIR COMPROBANTE'}
                           <input type="file" className="hidden" accept="image/*,.pdf" onChange={handleUploadComprobante} disabled={uploadingComprobante} />
                         </label>
+                        <p className="font-mono text-[9px] text-white/40 uppercase">
+                          Formatos aceptados: JPG, PNG, WEBP, GIF, PDF — Máximo 10MB
+                        </p>
                       </div>
+                    )}
+                    {error && (
+                      <p className="text-hot-pink font-mono text-[10px] uppercase">{error}</p>
                     )}
                   </div>
 
@@ -274,6 +312,9 @@ export default function MiPlanTab({ alumno, planes, inscripcionActual }: Props) 
           <h2 className="font-anton text-3xl uppercase mb-6">
             {showPlanChange ? 'ESCOGE TU NUEVO PLAN' : 'PLANES DISPONIBLES'}
           </h2>
+          {error && (
+            <p className="text-hot-pink font-mono text-[10px] uppercase mb-4">{error}</p>
+          )}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {planes.map((plan, i) => (
               <motion.div

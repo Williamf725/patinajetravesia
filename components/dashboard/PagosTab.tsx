@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import * as XLSX from 'xlsx';
-import { Save, Download, Search, Eye, CheckCircle, XCircle, X, DollarSign, Users, AlertTriangle } from 'lucide-react';
+import { Save, Download, Search, Eye, CheckCircle, XCircle, X, DollarSign, Users, AlertTriangle, FileText } from 'lucide-react';
 import { Alumno, Inscripcion, Plan } from '@/types/database';
 import { savePagosChanges, updateInscripcionEstado, verifyComprobante } from '@/app/auth/actions/admin';
 
@@ -24,7 +24,7 @@ export default function PagosTab() {
   const [filtroAnio, setFiltroAnio] = useState(new Date().getFullYear());
   const [filtroEstado, setFiltroEstado] = useState('Todos');
   const [search, setSearch] = useState('');
-  const [selectedComprobante, setSelectedComprobante] = useState<string | null>(null);
+  const [selectedComprobante, setSelectedComprobante] = useState<Inscripcion | null>(null);
 
   const [isSaving, setIsSaving] = useState(false);
   const supabase = createClient();
@@ -92,7 +92,7 @@ export default function PagosTab() {
         const planPrice = i.plan?.precio || 0;
         let autoEstado = i.estado;
         if (i.total_pagado >= planPrice && planPrice > 0) autoEstado = 'aprobado';
-        else if (i.total_pagado > 0) autoEstado = 'pendiente'; // Or could be a new 'abono' state if schema allowed
+        else if (i.total_pagado > 0) autoEstado = 'pendiente';
 
         return {
           alumno_id: i.alumno_id,
@@ -151,6 +151,7 @@ export default function PagosTab() {
         'Total Pagado': insc?.total_pagado || 0,
         'Saldo': saldo,
         'Estado': label,
+        'Comprobante URL': insc?.comprobante_url || '',
         'Obs': insc?.observaciones || ''
       };
     });
@@ -161,7 +162,9 @@ export default function PagosTab() {
   };
 
   const stats = {
-    totalRecaudado: inscripciones.reduce((acc, curr) => acc + (curr.total_pagado || 0), 0),
+    totalRecaudado: inscripciones
+      .filter(i => i.estado === 'aprobado')
+      .reduce((acc, curr) => acc + (curr.total_pagado || 0), 0),
     totalPendiente: filteredAlumnos.reduce((acc, curr) => {
       const insc = inscripciones.find(i => i.alumno_id === curr.id);
       const { saldo } = getCalculatedState(insc);
@@ -289,9 +292,9 @@ export default function PagosTab() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={9} className="p-20 text-center animate-pulse text-xl font-anton">Cargando datos financieros...</td></tr>
+              <tr><td colSpan={11} className="p-20 text-center animate-pulse text-xl font-anton">Cargando datos financieros...</td></tr>
             ) : filteredAlumnos.length === 0 ? (
-              <tr><td colSpan={9} className="p-10 text-center text-white/20">No se encontraron registros</td></tr>
+              <tr><td colSpan={11} className="p-10 text-center text-white/20">No se encontraron registros</td></tr>
             ) : (
               filteredAlumnos.map((alumno) => {
                 const insc = inscripciones.find(i => i.alumno_id === alumno.id);
@@ -347,26 +350,35 @@ export default function PagosTab() {
                     <td className="p-3 text-center border-r border-white/10">
                       {insc?.comprobante_url ? (
                         <div className="flex flex-col items-center gap-1">
-                          <button
-                            onClick={() => setSelectedComprobante(insc.comprobante_url)}
-                            className="bg-white/10 text-white px-2 py-1 flex items-center gap-1 hover:bg-white/20 transition-colors"
-                          >
-                             <Eye size={10} /> VER
-                          </button>
+                          {insc.comprobante_url.toLowerCase().endsWith('.pdf') ? (
+                            <a
+                              href={insc.comprobante_url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="bg-white/10 text-white px-3 py-1 flex items-center gap-1 hover:bg-white/20 transition-colors"
+                            >
+                               <FileText size={14} /> PDF
+                            </a>
+                          ) : (
+                            <button
+                              onClick={() => setSelectedComprobante(insc)}
+                              className="relative w-[60px] h-[60px] border-2 border-white/20 overflow-hidden hover:border-neon-green transition-colors group"
+                            >
+                               {/* eslint-disable-next-line @next/next/no-img-element */}
+                               <img
+                                src={insc.comprobante_url}
+                                alt="Miniatura"
+                                className="object-cover w-full h-full group-hover:scale-110 transition-transform"
+                               />
+                               <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <Eye size={16} />
+                               </div>
+                            </button>
+                          )}
                           {insc.comprobante_verificado ? (
                             <span className="text-[7px] text-neon-green font-bold">✅ VERIFICADO</span>
                           ) : (
-                            <button
-                              onClick={async () => {
-                                if (confirm('¿Marcar este comprobante como verificado?')) {
-                                   await verifyComprobante(insc.id);
-                                   fetchData();
-                                }
-                              }}
-                              className="text-[7px] text-yellow-400 underline uppercase"
-                            >
-                               Validar Pago
-                            </button>
+                            <span className="text-[7px] text-yellow-400 font-bold">POR VALIDAR</span>
                           )}
                         </div>
                       ) : (
@@ -422,36 +434,67 @@ export default function PagosTab() {
 
       {/* Receipt Viewer Modal */}
       {selectedComprobante && (
-        <div className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4">
-          <div className="bg-[#131313] border-4 border-white max-w-2xl w-full max-h-[90vh] flex flex-col shadow-brutal">
+        <div
+          className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4 backdrop-blur-sm"
+          onClick={() => setSelectedComprobante(null)}
+        >
+          <div
+            className="bg-[#131313] border-4 border-white max-w-4xl w-full max-h-[95vh] flex flex-col shadow-brutal relative"
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setSelectedComprobante(null)}
+              className="absolute -top-4 -right-4 bg-hot-pink text-white p-2 border-2 border-white hover:scale-110 transition-transform z-10"
+            >
+              <X size={24} />
+            </button>
+
             <div className="p-4 border-b-2 border-white flex justify-between items-center bg-white/5">
               <h3 className="font-anton text-xl tracking-wider text-white uppercase italic">COMPROBANTE DE PAGO</h3>
-              <button onClick={() => setSelectedComprobante(null)} className="p-2 hover:bg-hot-pink transition-colors">
-                <X size={24} />
-              </button>
+              <p className="font-mono text-xs text-white/60">
+                 {filtroMes.toUpperCase()} {filtroAnio}
+              </p>
             </div>
+
             <div className="flex-1 overflow-auto p-4 flex justify-center bg-black/50">
               <img
-                src={selectedComprobante}
+                src={selectedComprobante.comprobante_url!}
                 alt="Comprobante"
-                className="max-w-full h-auto object-contain border border-white/10"
+                className="max-w-full max-h-[70vh] object-contain border-2 border-white/10"
               />
             </div>
-            <div className="p-4 border-t-2 border-white flex justify-end gap-4 bg-white/5">
-               <button
+
+            <div className="p-6 border-t-2 border-white bg-white/5 space-y-6">
+                <div className="flex flex-wrap gap-4 justify-center">
+                    <a
+                      href={selectedComprobante.comprobante_url!}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="px-8 py-3 border-2 border-white text-white font-anton uppercase text-sm hover:bg-white hover:text-black transition-colors"
+                    >
+                      Descargar
+                    </a>
+
+                    {!selectedComprobante.comprobante_verificado && (
+                        <button
+                          onClick={async () => {
+                             await verifyComprobante(selectedComprobante.id);
+                             setSelectedComprobante(null);
+                             fetchData();
+                          }}
+                          className="px-8 py-3 bg-neon-green text-black font-anton uppercase text-sm hover:scale-105 transition-transform"
+                        >
+                          ✅ Marcar pago verificado
+                        </button>
+                    )}
+                </div>
+
+                <button
                   onClick={() => setSelectedComprobante(null)}
-                  className="px-6 py-2 border-2 border-white font-anton uppercase text-sm hover:bg-white hover:text-black transition-colors"
+                  className="w-full text-center font-mono text-[10px] text-white/40 uppercase hover:text-white transition-colors"
                 >
                   Cerrar
                 </button>
-                <a
-                  href={selectedComprobante}
-                  target="_blank"
-                  rel="noreferrer"
-                  className="px-6 py-2 bg-neon-green text-black font-anton uppercase text-sm hover:scale-105 transition-transform"
-                >
-                  Abrir Original
-                </a>
             </div>
           </div>
         </div>
