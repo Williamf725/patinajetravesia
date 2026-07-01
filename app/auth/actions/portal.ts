@@ -29,14 +29,22 @@ export async function selectPlan(alumnoId: string, planId: string) {
 
   if (!plan || !alumno) throw new Error('Información no encontrada')
 
+  // Calcular fecha de vencimiento
+  const fechaVencimiento = new Date()
+  if (plan.nombre.toLowerCase().includes('individual')) {
+    fechaVencimiento.setDate(fechaVencimiento.getDate() + 1)
+  } else {
+    fechaVencimiento.setDate(fechaVencimiento.getDate() + 30)
+  }
+
   // 2. Create Inscripcion
-  // Omitimos numero_alumno — se asume que Supabase maneja ID
   const { error } = await supabase.from('inscripciones').insert({
     alumno_id: alumnoId,
     plan_id: planId,
     mes,
     anio,
-    estado: 'pendiente'
+    estado: 'pendiente',
+    fecha_vencimiento: fechaVencimiento.toISOString()
   })
 
   if (error) {
@@ -146,4 +154,43 @@ export async function getHistorialInscripciones(alumnoId: string) {
     .order('created_at', { ascending: false })
 
   return data || []
+}
+
+export async function updateComprobante(inscripcionId: string, url: string) {
+  const supabase = await createClient()
+  const { error } = await supabase
+    .from('inscripciones')
+    .update({
+      comprobante_url: url,
+      estado: 'pendiente' // Asegurar que el estado vuelva a pendiente si se sube nuevo comprobante
+    })
+    .eq('id', inscripcionId)
+
+  if (error) throw error
+  revalidatePath('/portal')
+}
+
+export async function cambiarPlan(inscripcionId: string, planId: string) {
+  const supabase = await createClient()
+
+  const { data: plan } = await supabase.from('planes').select('*').eq('id', planId).single()
+  if (!plan) throw new Error('Plan no encontrado')
+
+  const fechaVencimiento = new Date()
+  if (plan.nombre.toLowerCase().includes('individual')) {
+    fechaVencimiento.setDate(fechaVencimiento.getDate() + 1)
+  } else {
+    fechaVencimiento.setDate(fechaVencimiento.getDate() + 30)
+  }
+
+  const { error } = await supabase
+    .from('inscripciones')
+    .update({
+      plan_id: planId,
+      fecha_vencimiento: fechaVencimiento.toISOString()
+    })
+    .eq('id', inscripcionId)
+
+  if (error) throw error
+  revalidatePath('/portal')
 }

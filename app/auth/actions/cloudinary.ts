@@ -20,8 +20,17 @@ async function checkAdmin() {
   }
 }
 
+async function checkAuth() {
+  const supabase = await createClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) {
+    throw new Error('Unauthorized')
+  }
+  return user
+}
+
 export async function getCloudinarySignature() {
-  await checkAdmin()
+  await checkAuth()
 
   const timestamp = Math.round(new Date().getTime() / 1000)
   const signature = cloudinary.utils.api_sign_request(

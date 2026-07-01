@@ -24,6 +24,9 @@ export type Inscripcion = {
   clases_usadas: number;
   total_pagado: number;
   observaciones: string | null;
+  comprobante_url: string | null;
+  comprobante_verificado: boolean;
+  fecha_vencimiento: string | null;
   fecha_aprobacion: string | null;
   created_at: string;
   updated_at?: string;

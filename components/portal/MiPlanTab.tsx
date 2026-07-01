@@ -3,8 +3,9 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Plan, Inscripcion, Alumno } from '@/types/database';
-import { selectPlan } from '@/app/auth/actions/portal';
-import { CheckCircle2, Clock, XCircle, Info, AlertTriangle } from 'lucide-react';
+import { selectPlan, updateComprobante, cambiarPlan } from '@/app/auth/actions/portal';
+import { getCloudinarySignature } from '@/app/auth/actions/cloudinary';
+import { CheckCircle2, Clock, XCircle, Info, AlertTriangle, CreditCard, Copy, Upload, RefreshCw } from 'lucide-react';
 
 interface Props {
   alumno: Alumno;
@@ -14,6 +15,13 @@ interface Props {
 
 export default function MiPlanTab({ alumno, planes, inscripcionActual }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [showPlanChange, setShowPlanChange] = useState(false);
+  const [uploadingComprobante, setUploadingComprobante] = useState(false);
+
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    alert('Copiado al portapapeles');
+  };
 
   const handleSelectPlan = async (plan: Plan) => {
     if (isSubmitting) return;
@@ -38,8 +46,79 @@ export default function MiPlanTab({ alumno, planes, inscripcionActual }: Props) 
     }
   };
 
+  const handleUploadComprobante = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !inscripcionActual) return;
+
+    setUploadingComprobante(true);
+    try {
+      const { signature, timestamp, api_key, cloud_name } = await getCloudinarySignature();
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('signature', signature);
+      formData.append('timestamp', timestamp.toString());
+      formData.append('api_key', api_key);
+      formData.append('folder', 'comprobantes');
+
+      const res = await fetch(`https://api.cloudinary.com/v1_1/${cloud_name}/auto/upload`, {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (data.secure_url) {
+        await updateComprobante(inscripcionActual.id, data.secure_url);
+        alert('Comprobante subido con éxito');
+      }
+    } catch (err) {
+      console.error(err);
+      alert('Error al subir comprobante');
+    } finally {
+      setUploadingComprobante(false);
+    }
+  };
+
+  const handleChangePlan = async (plan: Plan) => {
+    if (!inscripcionActual) return;
+    setIsSubmitting(true);
+    try {
+      await cambiarPlan(inscripcionActual.id, plan.id);
+      setShowPlanChange(false);
+      alert('Plan actualizado con éxito');
+    } catch {
+      alert('Error al cambiar plan');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   return (
     <div className="space-y-12">
+      {/* Datos de Pago Fijos */}
+      <section className="bg-neon-green p-6 border-4 border-black shadow-brutal flex flex-col md:flex-row justify-between items-center gap-6">
+        <div className="flex items-center gap-4">
+           <CreditCard size={40} className="text-black" />
+           <div>
+              <h2 className="font-anton text-2xl text-black uppercase leading-none">Datos de Pago</h2>
+              <p className="font-mono text-[10px] text-black/60 uppercase font-bold">Nequi / Bold</p>
+           </div>
+        </div>
+
+        <div className="flex flex-col md:flex-row gap-4 items-center">
+           <div className="text-center md:text-right">
+              <p className="font-anton text-3xl text-black leading-none">@SPA442</p>
+              <p className="font-mono text-[10px] text-black uppercase">Silvia Peña</p>
+           </div>
+           <button
+            onClick={() => copyToClipboard('@SPA442')}
+            className="bg-black text-white p-3 hover:scale-110 active:scale-95 transition-transform"
+           >
+              <Copy size={20} />
+           </button>
+        </div>
+      </section>
+
       {/* Current Subscription Status */}
       <section>
         <h2 className="font-anton text-3xl uppercase mb-6 flex items-center gap-2">
@@ -76,9 +155,62 @@ export default function MiPlanTab({ alumno, planes, inscripcionActual }: Props) 
                 </div>
               )}
 
+              <div className="mt-8 border-t border-white/10 pt-6">
+                <div className="flex flex-col md:flex-row justify-between gap-6">
+                  {/* Comprobante Section */}
+                  <div className="flex-1 space-y-4">
+                    <p className="font-mono text-[10px] text-white/40 uppercase tracking-widest flex items-center gap-2">
+                      <Upload size={12} /> Comprobante de Pago
+                    </p>
+
+                    {inscripcionActual.comprobante_url ? (
+                      <div className="flex items-center gap-4">
+                        <div className="relative w-20 h-20 border-2 border-white/20 overflow-hidden">
+                           {/* eslint-disable-next-line @next/next/no-img-element */}
+                           <img src={inscripcionActual.comprobante_url} alt="Comprobante" className="object-cover w-full h-full" />
+                        </div>
+                        <div className="space-y-2">
+                          <p className={`font-anton text-xs uppercase ${inscripcionActual.comprobante_verificado ? 'text-neon-green' : 'text-yellow-400'}`}>
+                            {inscripcionActual.comprobante_verificado ? '✅ Pago Verificado' : 'Comprobante enviado — pendiente de verificación'}
+                          </p>
+                          {!inscripcionActual.comprobante_verificado && (
+                            <label className="text-[10px] text-white/60 underline cursor-pointer hover:text-white uppercase font-mono">
+                              Reemplazar
+                              <input type="file" className="hidden" accept="image/*,.pdf" onChange={handleUploadComprobante} disabled={uploadingComprobante} />
+                            </label>
+                          )}
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-4">
+                        <p className="font-anton text-xs text-white/20 uppercase">Sin comprobante</p>
+                        <label className="btn-tape text-xs py-3 cursor-pointer inline-flex items-center gap-2">
+                          {uploadingComprobante ? 'SUBIENDO...' : 'SUBIR COMPROBANTE'}
+                          <input type="file" className="hidden" accept="image/*,.pdf" onChange={handleUploadComprobante} disabled={uploadingComprobante} />
+                        </label>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Class Summary for all states */}
+                  <div className="flex-1 text-right space-y-2">
+                    <p className="font-mono text-[10px] text-white/40 uppercase">Vencimiento</p>
+                    <p className="font-anton text-xl text-white">
+                      {inscripcionActual.fecha_vencimiento ? new Date(inscripcionActual.fecha_vencimiento).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : 'N/A'}
+                    </p>
+                    <button
+                      onClick={() => setShowPlanChange(!showPlanChange)}
+                      className="text-[10px] text-neon-green underline uppercase font-mono flex items-center gap-1 justify-end ml-auto"
+                    >
+                      <RefreshCw size={10} /> Cambiar Plan
+                    </button>
+                  </div>
+                </div>
+              </div>
+
               {inscripcionActual.estado === 'aprobado' && (
-                <div className="space-y-6">
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 mt-6">
+                <div className="space-y-6 mt-10">
+                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
                     <div className="bg-black/40 p-3 border border-white/10">
                       <p className="text-[9px] text-white/40 uppercase">Clases Plan</p>
                       <p className="font-anton text-2xl">{inscripcionActual.plan?.clases_incluidas}</p>
@@ -94,8 +226,8 @@ export default function MiPlanTab({ alumno, planes, inscripcionActual }: Props) 
                       </p>
                     </div>
                     <div className="bg-black/40 p-3 border border-white/10">
-                      <p className="text-[9px] text-white/40 uppercase">Total Pagado</p>
-                      <p className="font-anton text-2xl text-neon-green">
+                      <p className="text-[9px] text-white/40 uppercase">Precio Plan</p>
+                      <p className="font-anton text-2xl text-white/60">
                         ${inscripcionActual.plan?.precio.toLocaleString()}
                       </p>
                     </div>
@@ -136,11 +268,13 @@ export default function MiPlanTab({ alumno, planes, inscripcionActual }: Props) 
         )}
       </section>
 
-      {/* Available Plans */}
-      {!inscripcionActual && (
-        <section>
-          <h2 className="font-anton text-3xl uppercase mb-6">PLANES DISPONIBLES</h2>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+      {/* Available Plans / Change Plan */}
+      {(!inscripcionActual || showPlanChange) && (
+        <section className="mt-20">
+          <h2 className="font-anton text-3xl uppercase mb-6">
+            {showPlanChange ? 'ESCOGE TU NUEVO PLAN' : 'PLANES DISPONIBLES'}
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             {planes.map((plan, i) => (
               <motion.div
                 key={plan.id}
@@ -169,10 +303,10 @@ export default function MiPlanTab({ alumno, planes, inscripcionActual }: Props) 
 
                 <button
                   disabled={isSubmitting}
-                  onClick={() => handleSelectPlan(plan)}
+                  onClick={() => showPlanChange ? handleChangePlan(plan) : handleSelectPlan(plan)}
                   className="btn-tape w-full py-3 font-anton uppercase text-lg disabled:opacity-50"
                 >
-                  {isSubmitting ? 'Procesando...' : 'Escoger Plan'}
+                  {isSubmitting ? 'Procesando...' : (showPlanChange ? 'Confirmar Cambio' : 'Escoger Plan')}
                 </button>
               </motion.div>
             ))}
