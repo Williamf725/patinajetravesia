@@ -111,7 +111,50 @@ CREATE TABLE IF NOT EXISTS public.login_logs (
 );
 ```
 
-## 2. RLS y Políticas
+## 2. Automatización (Triggers)
+
+```sql
+-- Función para sincronizar clases usadas automáticamente
+CREATE OR REPLACE FUNCTION public.sync_clases_usadas()
+RETURNS TRIGGER AS $$
+DECLARE
+    v_mes TEXT;
+    v_anio INTEGER;
+    v_count INTEGER;
+BEGIN
+    -- Determinar mes y año de la asistencia (en español y minúsculas para coincidir con la app)
+    -- NOTA: to_char solo usa 2 parámetros. El trim quita espacios extra.
+    v_mes := trim(lower(to_char(NEW.fecha, 'TMmonth')));
+    v_anio := CAST(to_char(NEW.fecha, 'YYYY') AS INTEGER);
+
+    -- Contar asistencias del alumno en ese mes/año
+    SELECT count(*) INTO v_count
+    FROM public.asistencia
+    WHERE alumno_id = NEW.alumno_id
+      AND presente = true
+      AND trim(lower(to_char(fecha, 'TMmonth'))) = v_mes
+      AND CAST(to_char(fecha, 'YYYY') AS INTEGER) = v_anio;
+
+    -- Actualizar la inscripción correspondiente
+    UPDATE public.inscripciones
+    SET clases_usadas = v_count,
+        updated_at = now()
+    WHERE alumno_id = NEW.alumno_id
+      AND lower(mes) = v_mes
+      AND anio = v_anio;
+
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Trigger para asistencia
+DROP TRIGGER IF EXISTS tr_sync_asistencia ON public.asistencia;
+CREATE TRIGGER tr_sync_asistencia
+AFTER INSERT OR UPDATE ON public.asistencia
+FOR EACH ROW EXECUTE FUNCTION public.sync_clases_usadas();
+```
+
+## 3. RLS y Políticas
 
 ```sql
 -- Habilitar RLS
@@ -120,9 +163,12 @@ ALTER TABLE public.asistencia ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.pagos ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.galeria ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.login_logs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.planes ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.inscripciones ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.notificaciones ENABLE ROW LEVEL SECURITY;
 
--- Políticas simplificadas para el Admin (Email específico)
--- En una app real, usaríamos roles o perfiles, pero aquí validamos por el email conocido.
+-- 1. Políticas de Administrador (Acceso total)
+-- Validamos por el email conocido del administrador.
 
 CREATE POLICY "Admin full access on alumnos" ON public.alumnos FOR ALL USING (auth.jwt() ->> 'email' = 'clubdepatinajetravesia@gmail.com');
 CREATE POLICY "Admin full access on asistencia" ON public.asistencia FOR ALL USING (auth.jwt() ->> 'email' = 'clubdepatinajetravesia@gmail.com');
@@ -131,30 +177,55 @@ CREATE POLICY "Admin full access on galeria" ON public.galeria FOR ALL USING (au
 CREATE POLICY "Admin full access on login_logs" ON public.login_logs FOR ALL USING (auth.jwt() ->> 'email' = 'clubdepatinajetravesia@gmail.com');
 CREATE POLICY "Admin full access on planes" ON public.planes FOR ALL USING (auth.jwt() ->> 'email' = 'clubdepatinajetravesia@gmail.com');
 CREATE POLICY "Admin full access on inscripciones" ON public.inscripciones FOR ALL USING (auth.jwt() ->> 'email' = 'clubdepatinajetravesia@gmail.com');
+CREATE POLICY "Admin full access on notificaciones" ON public.notificaciones FOR ALL USING (auth.jwt() ->> 'email' = 'clubdepatinajetravesia@gmail.com');
 
--- Políticas para Alumnos (Portal)
+-- 2. Políticas para Alumnos (Portal)
+
+-- Alumnos pueden leer su propio perfil
 CREATE POLICY "Alumnos can read their own data" ON public.alumnos FOR SELECT USING (auth.jwt() ->> 'email' = email);
-CREATE POLICY "Alumnos can read all attendance" ON public.asistencia FOR SELECT USING (auth.role() = 'authenticated');
-CREATE POLICY "Alumnos can read attendance detail" ON public.alumnos FOR SELECT USING (auth.role() = 'authenticated'); -- Necesario para nombres
+
+-- Alumnos pueden leer su propia asistencia
+CREATE POLICY "Alumnos can read their own attendance" ON public.asistencia FOR SELECT USING (
+    EXISTS (
+        SELECT 1 FROM public.alumnos
+        WHERE id = alumno_id AND email = auth.jwt() ->> 'email'
+    )
+);
+
+-- Alumnos pueden leer todos los planes disponibles
 CREATE POLICY "Alumnos can read planes" ON public.planes FOR SELECT USING (auth.role() = 'authenticated');
+
+-- Alumnos pueden crear sus propias inscripciones
 CREATE POLICY "Alumnos can select their plan" ON public.inscripciones FOR INSERT WITH CHECK (
     EXISTS (
         SELECT 1 FROM public.alumnos
         WHERE id = alumno_id AND email = auth.jwt() ->> 'email'
     )
 );
-CREATE POLICY "Alumnos can read their own inscripciones" ON public.inscripciones FOR SELECT USING (
+
+-- Alumnos pueden leer y actualizar sus propias inscripciones (ej. subir comprobante)
+CREATE POLICY "Alumnos can read/update their own inscripciones" ON public.inscripciones FOR ALL USING (
     EXISTS (
         SELECT 1 FROM public.alumnos
         WHERE id = alumno_id AND email = auth.jwt() ->> 'email'
     )
 );
 
+-- 3. Otras Políticas
+
 -- Permitir lectura pública de galería para el TvSection
 CREATE POLICY "Public read access on galeria" ON public.galeria FOR SELECT USING (true);
+
+-- Alumnos pueden ver sus propias notificaciones
+CREATE POLICY "Alumnos can read their notifications" ON public.notificaciones FOR SELECT USING (
+    EXISTS (
+        SELECT 1 FROM public.alumnos
+        WHERE id = alumno_id AND email = auth.jwt() ->> 'email'
+    )
+);
 ```
 
-## 3. Índices
+## 4. Índices
 
 ```sql
 CREATE INDEX IF NOT EXISTS idx_asistencia_fecha ON public.asistencia(fecha);
