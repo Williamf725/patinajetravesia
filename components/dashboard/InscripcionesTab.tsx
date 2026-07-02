@@ -44,11 +44,15 @@ export default function InscripcionesTab() {
     return matchesFilter && matchesSearch;
   });
 
-  // Sort: Pendiente first
+  // Sort: Pendiente first, then by numero_alumno
   const sortedItems = [...filteredItems].sort((a, b) => {
     if (a.estado === 'pendiente' && b.estado !== 'pendiente') return -1;
     if (a.estado !== 'pendiente' && b.estado === 'pendiente') return 1;
-    return 0;
+
+    // Primary sort by alumno number
+    const numA = a.alumno?.numero_alumno || 999;
+    const numB = b.alumno?.numero_alumno || 999;
+    return numA - numB;
   });
 
   return (

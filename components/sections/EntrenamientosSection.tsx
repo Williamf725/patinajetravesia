@@ -11,7 +11,7 @@ const HORARIOS = [
   },
   {
     dia: 'JUEVES',
-    hora: '6:00 PM a 8:00 PM',
+    hora: '6:30 PM a 8:30 PM',
     color: 'border-hot-pink',
     rot: 1
   },
