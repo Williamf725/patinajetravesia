@@ -27,8 +27,19 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Club de Patinaje Travesía | El Arte de Rodar",
-  description: "Plantilla oficial del Club de Patinaje Travesía. Estilo brutalista y urbano.",
+  title: 'Club de Patinaje Travesía | El Arte de Rodar',
+  description: 'Club de patinaje para adultos en Sogamoso, Boyacá.',
+  icons: {
+    icon: [
+      { url: '/icon.png', sizes: '32x32', type: 'image/png' },
+      { url: '/icon-192.png', sizes: '192x192', type: 'image/png' },
+    ],
+    apple: [
+      { url: '/apple-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
+    shortcut: '/favicon.ico',
+  },
+  manifest: '/manifest.json',
 };
 
 export default function RootLayout({
