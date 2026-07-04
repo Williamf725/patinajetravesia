@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { Inscripcion } from '@/types/database';
 import { createClient } from '@/lib/supabase/client';
 import { updateInscripcionEstado } from '@/app/auth/actions/admin';
-import { ClipboardList, Check, X, Filter, Search } from 'lucide-react';
+import { ClipboardList, Check, X, Filter, Search, ShieldCheck, Fingerprint, Phone } from 'lucide-react';
 
 export default function InscripcionesTab() {
   const [items, setItems] = useState<Inscripcion[]>([]);
@@ -44,12 +44,10 @@ export default function InscripcionesTab() {
     return matchesFilter && matchesSearch;
   });
 
-  // Sort: Pendiente first, then by numero_alumno
   const sortedItems = [...filteredItems].sort((a, b) => {
     if (a.estado === 'pendiente' && b.estado !== 'pendiente') return -1;
     if (a.estado !== 'pendiente' && b.estado === 'pendiente') return 1;
 
-    // Primary sort by alumno number
     const numA = a.alumno?.numero_alumno || 999;
     const numB = b.alumno?.numero_alumno || 999;
     return numA - numB;
@@ -102,33 +100,40 @@ export default function InscripcionesTab() {
         <table className="w-full font-mono text-[10px] uppercase tracking-tighter text-left">
           <thead>
             <tr className="bg-black border-b-4 border-white">
-              <th className="p-4 border-r border-white/20">Nº Alumno</th>
-              <th className="p-4 border-r border-white/20">Nombre Completo</th>
-              <th className="p-4 border-r border-white/20">Email</th>
+              <th className="p-4 border-r border-white/20">#</th>
+              <th className="p-4 border-r border-white/20 min-w-[200px]">Estudiante / Identidad</th>
+              <th className="p-4 border-r border-white/20">Perfil</th>
               <th className="p-4 border-r border-white/20">Plan Escogido</th>
               <th className="p-4 border-r border-white/20 text-center">Precio</th>
               <th className="p-4 border-r border-white/20">Mes / Anio</th>
               <th className="p-4 border-r border-white/20">Estado</th>
-              <th className="p-4 border-r border-white/20">Fecha</th>
               <th className="p-4">Acciones</th>
             </tr>
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={9} className="p-10 text-center animate-pulse">CARGANDO...</td></tr>
+              <tr><td colSpan={8} className="p-10 text-center animate-pulse">CARGANDO...</td></tr>
             ) : sortedItems.length === 0 ? (
-              <tr><td colSpan={9} className="p-10 text-center text-white/20">NO HAY REGISTROS QUE COINCIDAN</td></tr>
+              <tr><td colSpan={8} className="p-10 text-center text-white/20">NO HAY REGISTROS QUE COINCIDAN</td></tr>
             ) : (
               sortedItems.map((item) => (
                 <tr key={item.id} className={`border-b border-white/10 hover:bg-white/5 transition-colors ${item.estado === 'pendiente' ? 'bg-yellow-400/5' : ''}`}>
                   <td className="p-4 border-r border-white/20 font-bold text-neon-green">
-                    #{item.alumno?.numero_alumno}
+                    {item.alumno?.numero_alumno}
                   </td>
-                  <td className="p-4 border-r border-white/20 font-anton uppercase">
-                    {item.alumno?.nombre_completo}
+                  <td className="p-4 border-r border-white/20">
+                    <div className="flex flex-col gap-1">
+                        <span className="font-anton text-sm uppercase text-white">{item.alumno?.nombre_completo}</span>
+                        <div className="flex flex-wrap gap-2 text-[8px] text-white/40 font-bold">
+                            <span className="flex items-center gap-0.5"><ShieldCheck size={8} /> {item.alumno?.tipo_documento || '---'}</span>
+                            <span className="flex items-center gap-0.5"><Fingerprint size={8} /> {item.alumno?.numero_documento || '---'}</span>
+                            <span className="flex items-center gap-0.5"><Phone size={8} /> {item.alumno?.telefono || '---'}</span>
+                        </div>
+                        <span className="text-[7px] text-white/20">{item.alumno?.email}</span>
+                    </div>
                   </td>
-                  <td className="p-4 border-r border-white/20 text-white/60">
-                    {item.alumno?.email}
+                  <td className="p-4 border-r border-white/20 text-center">
+                    {item.alumno?.perfil_completo ? '✅' : '⚠️'}
                   </td>
                   <td className="p-4 border-r border-white/20">
                     {item.plan?.nombre}
@@ -147,9 +152,6 @@ export default function InscripcionesTab() {
                     }`}>
                       {item.estado}
                     </span>
-                  </td>
-                  <td className="p-4 border-r border-white/20 text-white/40">
-                    {new Date(item.created_at).toLocaleDateString()}
                   </td>
                   <td className="p-4">
                     {item.estado === 'pendiente' ? (
@@ -177,7 +179,7 @@ export default function InscripcionesTab() {
                           <Filter size={14} />
                         </button>
                         <span className="text-[8px] text-white/20 uppercase">
-                          {item.estado === 'aprobado' ? 'Confirmado' : 'Rechazado'} {item.fecha_aprobacion ? new Date(item.fecha_aprobacion).toLocaleDateString() : ''}
+                          {item.estado === 'aprobado' ? 'Confirmado' : 'Rechazado'}
                         </span>
                       </div>
                     )}

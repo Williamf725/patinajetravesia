@@ -8,11 +8,15 @@ Ejecuta este código en el editor SQL de Supabase para crear las tablas necesari
 -- Tabla de Alumnos
 CREATE TABLE IF NOT EXISTS public.alumnos (
     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-    numero_alumno SERIAL UNIQUE NOT NULL, -- Cambiado a serial para auto-incremento
+    numero_alumno SERIAL UNIQUE NOT NULL,
     nombre TEXT,
     apellido TEXT,
     nombre_completo TEXT NOT NULL,
     email TEXT UNIQUE,
+    tipo_documento TEXT, -- CC, TI, Pasaporte, NIT
+    numero_documento TEXT,
+    telefono TEXT,
+    perfil_completo BOOLEAN DEFAULT false,
     activo BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT now()
 );
@@ -123,7 +127,6 @@ DECLARE
     v_count INTEGER;
 BEGIN
     -- Determinar mes y año de la asistencia (en español y minúsculas para coincidir con la app)
-    -- NOTA: to_char solo usa 2 parámetros. El trim quita espacios extra.
     v_mes := trim(lower(to_char(NEW.fecha, 'TMmonth')));
     v_anio := CAST(to_char(NEW.fecha, 'YYYY') AS INTEGER);
 

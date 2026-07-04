@@ -124,6 +124,10 @@ export async function registrarAlumno(_prevState: unknown, formData: FormData) {
     apellido,
     nombre_completo: `${nombre} ${apellido}`,
     email: email,
+    tipo_documento: formData.get('tipoDocumento') as string,
+    numero_documento: formData.get('numeroDocumento') as string,
+    telefono: formData.get('telefono') as string,
+    perfil_completo: true,
     activo: true,
   })
 

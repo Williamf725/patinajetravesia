@@ -1,8 +1,15 @@
 export type Alumno = {
   id: string;
   numero_alumno: number;
+  nombre: string | null;
+  apellido: string | null;
   nombre_completo: string;
   email: string | null;
+  tipo_documento: string | null;
+  numero_documento: string | null;
+  telefono: string | null;
+  perfil_completo: boolean;
+  activo: boolean;
   created_at: string;
 };
 

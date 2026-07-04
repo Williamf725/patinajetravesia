@@ -6,7 +6,8 @@ import { Alumno, Plan, Inscripcion } from '@/types/database';
 import MiPlanTab from './MiPlanTab';
 import MiAsistenciaTab from './MiAsistenciaTab';
 import MiHistorialTab from './MiHistorialTab';
-import { LayoutDashboard, CalendarRange, History } from 'lucide-react';
+import { LayoutDashboard, CalendarRange, History, User } from 'lucide-react';
+import MiPerfilTab from './MiPerfilTab';
 
 interface Props {
   alumno: Alumno;
@@ -15,7 +16,7 @@ interface Props {
   historial: Inscripcion[];
 }
 
-type Tab = 'plan' | 'asistencia' | 'historial';
+type Tab = 'plan' | 'asistencia' | 'historial' | 'perfil';
 
 export default function PortalClient({ alumno, planes, inscripcionActual, historial }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('plan');
@@ -24,10 +25,18 @@ export default function PortalClient({ alumno, planes, inscripcionActual, histor
     { id: 'plan', label: 'Mi Plan', icon: LayoutDashboard },
     { id: 'asistencia', label: 'Mi Asistencia', icon: CalendarRange },
     { id: 'historial', label: 'Mi Historial', icon: History },
+    { id: 'perfil', label: 'Mi Perfil', icon: User },
   ];
 
   return (
     <div className="min-h-screen px-6 py-10 md:px-20 md:py-20 max-w-7xl mx-auto">
+      {!alumno.perfil_completo && (
+        <div style={{ background: '#ff9500', color: '#000', padding: '16px', marginBottom: '24px', border: '3px solid #ff2d78' }}>
+          <strong>⚠️ COMPLETA TU PERFIL</strong>
+          <p className="text-sm">Necesitamos tu documento y teléfono para el seguro contra accidentes del club. Ve a &quot;Mi Perfil&quot; y completa tu información.</p>
+        </div>
+      )}
+
       {/* Header */}
       <header className="mb-12 border-b-4 border-white pb-8">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-end gap-6">
@@ -96,6 +105,9 @@ export default function PortalClient({ alumno, planes, inscripcionActual, histor
             )}
             {activeTab === 'historial' && (
               <MiHistorialTab historial={historial} />
+            )}
+            {activeTab === 'perfil' && (
+              <MiPerfilTab alumno={alumno} />
             )}
           </motion.div>
         </AnimatePresence>

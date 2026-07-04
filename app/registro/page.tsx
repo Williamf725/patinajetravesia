@@ -20,6 +20,9 @@ export default function RegistroPage() {
     const email = formData.get('email') as string;
     const password = formData.get('password') as string;
     const confirmPassword = formData.get('confirmPassword') as string;
+    const tipoDocumento = formData.get('tipoDocumento') as string;
+    const numeroDocumento = formData.get('numeroDocumento') as string;
+    const telefono = formData.get('telefono') as string;
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) errors.email = 'Correo electrónico inválido';
@@ -29,6 +32,11 @@ export default function RegistroPage() {
     if (!nombre.trim()) errors.nombre = 'El nombre es obligatorio';
     if (!apellido.trim()) errors.apellido = 'El apellido es obligatorio';
 
+    if (!tipoDocumento) errors.tipoDocumento = 'Selecciona un tipo de documento';
+    if (!numeroDocumento.trim()) errors.numeroDocumento = 'El número de documento es obligatorio';
+    if (!/^\d{7,15}$/.test(numeroDocumento)) errors.numeroDocumento = 'Número de documento inválido';
+    if (!/^\d{7,15}$/.test(telefono)) errors.telefono = 'Número de celular inválido';
+
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
       return;
@@ -36,14 +44,11 @@ export default function RegistroPage() {
 
     setFieldErrors({});
 
-    // Enviar al server action vía formAction
-    // React maneja el estado isPending automáticamente con useActionState
     React.startTransition(() => {
       formAction(formData);
     });
   };
 
-  // Mezclar errores de cliente y servidor
   const allFieldErrors = { ...fieldErrors };
   if (state?.field && state.error) {
     allFieldErrors[state.field] = state.error;
@@ -51,7 +56,6 @@ export default function RegistroPage() {
 
   return (
     <div className="min-h-screen flex items-center justify-center p-6 bg-black relative pt-20">
-      {/* Background Decor */}
       <div className="absolute inset-0 bg-grain pointer-events-none opacity-20" />
 
       <motion.div
@@ -113,6 +117,47 @@ export default function RegistroPage() {
                 )}
               </div>
             )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-4">
+            <div className="flex flex-col gap-1">
+              <label className="font-mono text-[10px] text-neon-green uppercase tracking-[0.2em] font-bold">Tipo Documento</label>
+              <select
+                name="tipoDocumento"
+                required
+                className={`bg-transparent border-b-2 p-2 text-white outline-none transition-all font-mono text-sm appearance-none ${allFieldErrors.tipoDocumento ? 'border-hot-pink' : 'border-white/20 focus:border-neon-green'}`}
+              >
+                <option value="" className="bg-black">Seleccionar...</option>
+                <option value="Cédula de Ciudadanía" className="bg-black">Cédula de Ciudadanía</option>
+                <option value="Tarjeta de Identidad" className="bg-black">Tarjeta de Identidad</option>
+                <option value="Pasaporte" className="bg-black">Pasaporte</option>
+                <option value="NIT" className="bg-black">NIT</option>
+              </select>
+              {allFieldErrors.tipoDocumento && <span className="text-hot-pink font-mono text-[9px] uppercase tracking-tighter">{allFieldErrors.tipoDocumento}</span>}
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="font-mono text-[10px] text-neon-green uppercase tracking-[0.2em] font-bold">Nº Documento</label>
+              <input
+                name="numeroDocumento"
+                type="text"
+                required
+                className={`bg-transparent border-b-2 p-2 text-white outline-none transition-all font-mono text-sm ${allFieldErrors.numeroDocumento ? 'border-hot-pink' : 'border-white/20 focus:border-neon-green'}`}
+                placeholder="12345678"
+              />
+              {allFieldErrors.numeroDocumento && <span className="text-hot-pink font-mono text-[9px] uppercase tracking-tighter">{allFieldErrors.numeroDocumento}</span>}
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="font-mono text-[10px] text-neon-green uppercase tracking-[0.2em] font-bold">Celular</label>
+            <input
+              name="telefono"
+              type="text"
+              required
+              className={`bg-transparent border-b-2 p-2 text-white outline-none transition-all font-mono text-sm ${allFieldErrors.telefono ? 'border-hot-pink' : 'border-white/20 focus:border-neon-green'}`}
+              placeholder="300 000 0000"
+            />
+            {allFieldErrors.telefono && <span className="text-hot-pink font-mono text-[9px] uppercase tracking-tighter">{allFieldErrors.telefono}</span>}
           </div>
 
           <div className="grid grid-cols-2 gap-4">

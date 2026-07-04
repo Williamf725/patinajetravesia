@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import * as XLSX from 'xlsx';
-import { Save, Download, Search, Eye, CheckCircle, XCircle, X, DollarSign, Users, AlertTriangle, FileText } from 'lucide-react';
+import { Save, Download, Search, Eye, CheckCircle, XCircle, X, DollarSign, Users, AlertTriangle, FileText, ShieldCheck, Fingerprint, Phone } from 'lucide-react';
 import { Alumno, Inscripcion, Plan } from '@/types/database';
 import { savePagosChanges, updateInscripcionEstado, verifyComprobante } from '@/app/auth/actions/admin';
 
@@ -63,10 +63,9 @@ export default function PagosTab() {
           return i;
         });
       } else {
-        // Create a default skeleton for "Sin plan" students being edited
         const selectedPlan = field === 'plan_id' ? planes.find(p => p.id === value) : planes[0];
         return [...prev, {
-          id: Math.random().toString(), // temp id
+          id: Math.random().toString(),
           alumno_id: alumnoId,
           plan_id: selectedPlan?.id || '',
           plan: selectedPlan,
@@ -88,7 +87,6 @@ export default function PagosTab() {
     setIsSaving(true);
     try {
       const dataToSave = inscripciones.map(i => {
-        // Calculate status automatically based on payment
         const planPrice = i.plan?.precio || 0;
         let autoEstado = i.estado;
         if (i.total_pagado >= planPrice && planPrice > 0) autoEstado = 'aprobado';
@@ -146,6 +144,8 @@ export default function PagosTab() {
         'Nº': a.numero_alumno,
         'Alumno': a.nombre_completo,
         'Email': a.email,
+        'Identidad': `${a.tipo_documento || ''} ${a.numero_documento || ''}`,
+        'Celular': a.telefono || '',
         'Plan': insc?.plan?.nombre || 'N/A',
         'Total a Pagar': insc?.plan?.precio || 0,
         'Total Pagado': insc?.total_pagado || 0,
@@ -277,7 +277,8 @@ export default function PagosTab() {
         <table className="w-full border-collapse font-mono text-[10px] uppercase">
           <thead>
             <tr className="bg-black border-b-4 border-white text-white/60">
-              <th className="p-3 text-left border-r border-white/10">Alumno</th>
+              <th className="p-3 text-left border-r border-white/10 sticky left-0 bg-black z-30"># / Alumno</th>
+              <th className="p-3 text-center border-r border-white/10">Perfil</th>
               <th className="p-3 text-left border-r border-white/10">Plan</th>
               <th className="p-3 text-center border-r border-white/10">Incluidas</th>
               <th className="p-3 text-center border-r border-white/10">Usadas</th>
@@ -292,9 +293,9 @@ export default function PagosTab() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={11} className="p-20 text-center animate-pulse text-xl font-anton">Cargando datos financieros...</td></tr>
+              <tr><td colSpan={12} className="p-20 text-center animate-pulse text-xl font-anton">Cargando datos financieros...</td></tr>
             ) : filteredAlumnos.length === 0 ? (
-              <tr><td colSpan={11} className="p-10 text-center text-white/20">No se encontraron registros</td></tr>
+              <tr><td colSpan={12} className="p-10 text-center text-white/20">No se encontraron registros</td></tr>
             ) : (
               filteredAlumnos.map((alumno) => {
                 const insc = inscripciones.find(i => i.alumno_id === alumno.id);
@@ -302,10 +303,21 @@ export default function PagosTab() {
 
                 return (
                   <tr key={alumno.id} className="border-b border-white/10 hover:bg-white/5 transition-colors">
-                    <td className="p-3 border-r border-white/10 min-w-[180px]">
-                      <span className="text-neon-green font-bold">#{alumno.numero_alumno}</span>
-                      <p className="font-anton text-sm leading-none mt-1">{alumno.nombre_completo}</p>
-                      <p className="text-[8px] text-white/40 truncate">{alumno.email}</p>
+                    <td className="p-3 border-r border-white/10 min-w-[200px] sticky left-0 bg-[#1a1a1a] z-10">
+                      <div className="flex flex-col gap-1">
+                        <div className="flex items-center gap-2">
+                            <span className="text-neon-green font-bold">#{alumno.numero_alumno}</span>
+                            <p className="font-anton text-sm leading-none">{alumno.nombre_completo}</p>
+                        </div>
+                        <div className="flex flex-wrap gap-2 text-[7px] text-white/40 font-bold">
+                            <span className="flex items-center gap-0.5"><ShieldCheck size={8} /> {alumno.tipo_documento || '---'}</span>
+                            <span className="flex items-center gap-0.5"><Fingerprint size={8} /> {alumno.numero_documento || '---'}</span>
+                            <span className="flex items-center gap-0.5"><Phone size={8} /> {alumno.telefono || '---'}</span>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="p-3 border-r border-white/10 text-center">
+                        {alumno.perfil_completo ? '✅' : '⚠️'}
                     </td>
                     <td className="p-3 border-r border-white/10 min-w-[150px]">
                       <select
@@ -355,34 +367,34 @@ export default function PagosTab() {
                               href={insc.comprobante_url}
                               target="_blank"
                               rel="noreferrer"
-                              className="bg-white/10 text-white px-3 py-1 flex items-center gap-1 hover:bg-white/20 transition-colors"
+                              className="bg-white/10 text-white px-3 py-1 flex items-center gap-1 hover:bg-white/20 transition-colors text-[8px]"
                             >
-                               <FileText size={14} /> PDF
+                               <FileText size={10} /> PDF
                             </a>
                           ) : (
                             <button
                               onClick={() => setSelectedComprobante(insc)}
-                              className="relative w-[60px] h-[60px] border-2 border-white/20 overflow-hidden hover:border-neon-green transition-colors group"
+                              className="relative w-[50px] h-[50px] border border-white/20 overflow-hidden hover:border-neon-green transition-colors group"
                             >
                                {/* eslint-disable-next-line @next/next/no-img-element */}
                                <img
                                 src={insc.comprobante_url}
-                                alt="Miniatura"
+                                alt="Mini"
                                 className="object-cover w-full h-full group-hover:scale-110 transition-transform"
                                />
                                <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                  <Eye size={16} />
+                                  <Eye size={12} />
                                </div>
                             </button>
                           )}
                           {insc.comprobante_verificado ? (
-                            <span className="text-[7px] text-neon-green font-bold">✅ VERIFICADO</span>
+                            <span className="text-[6px] text-neon-green font-bold">VERIFICADO</span>
                           ) : (
-                            <span className="text-[7px] text-yellow-400 font-bold">POR VALIDAR</span>
+                            <span className="text-[6px] text-yellow-400 font-bold uppercase tracking-tighter">Por Validar</span>
                           )}
                         </div>
                       ) : (
-                        <span className="text-white/20 italic">Sin comprobante</span>
+                        <span className="text-white/20 italic text-[8px]">Sin comp.</span>
                       )}
                     </td>
                     <td className="p-3 border-r border-white/10">
@@ -396,17 +408,16 @@ export default function PagosTab() {
                     </td>
                     <td className="p-3">
                       {insc && (
-                        <div className="flex gap-2 justify-center">
+                        <div className="flex gap-1 justify-center">
                           {insc.estado !== 'aprobado' && (
                             <button
                               onClick={async () => {
                                 await updateInscripcionEstado(insc.id, 'aprobado');
                                 fetchData();
                               }}
-                              className="p-1.5 bg-neon-green text-black hover:scale-110 transition-transform"
-                              title="Aprobar Inscripción"
+                              className="p-1 bg-neon-green text-black hover:scale-110 transition-transform"
                             >
-                              <CheckCircle size={14} />
+                              <CheckCircle size={12} />
                             </button>
                           )}
                           {insc.estado !== 'rechazado' && (
@@ -415,10 +426,9 @@ export default function PagosTab() {
                                 await updateInscripcionEstado(insc.id, 'rechazado');
                                 fetchData();
                               }}
-                              className="p-1.5 bg-hot-pink text-white hover:scale-110 transition-transform"
-                              title="Rechazar Inscripción"
+                              className="p-1 bg-hot-pink text-white hover:scale-110 transition-transform"
                             >
-                              <XCircle size={14} />
+                              <XCircle size={12} />
                             </button>
                           )}
                         </div>
