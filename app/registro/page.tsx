@@ -23,6 +23,9 @@ export default function RegistroPage() {
     const tipoDocumento = formData.get('tipoDocumento') as string;
     const numeroDocumento = formData.get('numeroDocumento') as string;
     const telefono = formData.get('telefono') as string;
+    const dia = formData.get('dia') as string;
+    const mes = formData.get('mes') as string;
+    const anioNacimiento = formData.get('anioNacimiento') as string;
 
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) errors.email = 'Correo electrónico inválido';
@@ -36,6 +39,25 @@ export default function RegistroPage() {
     if (!numeroDocumento.trim()) errors.numeroDocumento = 'El número de documento es obligatorio';
     if (!/^\d{7,15}$/.test(numeroDocumento)) errors.numeroDocumento = 'Número de documento inválido';
     if (!/^\d{7,15}$/.test(telefono)) errors.telefono = 'Número de celular inválido';
+
+    if (!dia || !mes || !anioNacimiento) {
+      errors.fechaNacimiento = 'La fecha de nacimiento es obligatoria';
+    } else {
+      const fecha = new Date(parseInt(anioNacimiento), parseInt(mes) - 1, parseInt(dia));
+      if (isNaN(fecha.getTime()) || fecha.getDate() !== parseInt(dia)) {
+        errors.fechaNacimiento = 'La fecha de nacimiento no es válida';
+      } else {
+        const hoy = new Date();
+        let edad = hoy.getFullYear() - fecha.getFullYear();
+        const m = hoy.getMonth() - fecha.getMonth();
+        if (m < 0 || (m === 0 && hoy.getDate() < fecha.getDate())) {
+          edad--;
+        }
+        if (edad < 14) {
+          errors.fechaNacimiento = 'Debes tener al menos 14 años';
+        }
+      }
+    }
 
     if (Object.keys(errors).length > 0) {
       setFieldErrors(errors);
@@ -158,6 +180,51 @@ export default function RegistroPage() {
               placeholder="300 000 0000"
             />
             {allFieldErrors.telefono && <span className="text-hot-pink font-mono text-[9px] uppercase tracking-tighter">{allFieldErrors.telefono}</span>}
+          </div>
+
+          <div className="flex flex-col gap-1">
+            <label className="font-mono text-[10px] text-neon-green uppercase tracking-[0.2em] font-bold">Fecha de Nacimiento</label>
+            <div className="flex gap-2">
+              <select
+                name="dia"
+                required
+                className={`flex-1 bg-transparent border-b-2 p-2 text-white outline-none transition-all font-mono text-sm appearance-none ${allFieldErrors.fechaNacimiento ? 'border-hot-pink' : 'border-white/20 focus:border-neon-green'}`}
+              >
+                <option value="" className="bg-black">Día</option>
+                {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                  <option key={d} value={d} className="bg-black">{d}</option>
+                ))}
+              </select>
+
+              <select
+                name="mes"
+                required
+                className={`flex-2 bg-transparent border-b-2 p-2 text-white outline-none transition-all font-mono text-sm appearance-none ${allFieldErrors.fechaNacimiento ? 'border-hot-pink' : 'border-white/20 focus:border-neon-green'}`}
+              >
+                <option value="" className="bg-black">Mes</option>
+                {[
+                  'Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                  'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'
+                ].map((m, i) => (
+                  <option key={i} value={i + 1} className="bg-black">{m}</option>
+                ))}
+              </select>
+
+              <select
+                name="anioNacimiento"
+                required
+                className={`flex-1 bg-transparent border-b-2 p-2 text-white outline-none transition-all font-mono text-sm appearance-none ${allFieldErrors.fechaNacimiento ? 'border-hot-pink' : 'border-white/20 focus:border-neon-green'}`}
+              >
+                <option value="" className="bg-black">Año</option>
+                {Array.from(
+                  { length: new Date().getFullYear() - 1924 },
+                  (_, i) => new Date().getFullYear() - i
+                ).map(a => (
+                  <option key={a} value={a} className="bg-black">{a}</option>
+                ))}
+              </select>
+            </div>
+            {allFieldErrors.fechaNacimiento && <span className="text-hot-pink font-mono text-[9px] uppercase tracking-tighter">{allFieldErrors.fechaNacimiento}</span>}
           </div>
 
           <div className="grid grid-cols-2 gap-4">

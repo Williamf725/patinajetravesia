@@ -14,8 +14,13 @@ export async function guardarPerfil(formData: FormData) {
   const tipoDocumento = formData.get('tipoDocumento') as string
   const numeroDocumento = formData.get('numeroDocumento') as string
   const telefono = formData.get('telefono') as string
+  const dia = formData.get('dia') as string
+  const mes = formData.get('mes') as string
+  const anio = formData.get('anioNacimiento') as string
 
-  console.log('Guardando perfil:', { email: user.email, tipoDocumento, numeroDocumento, telefono })
+  const fecha_nacimiento = (dia && mes && anio) ? `${anio}-${String(mes).padStart(2, '0')}-${String(dia).padStart(2, '0')}` : null
+
+  console.log('Guardando perfil:', { email: user.email, tipoDocumento, numeroDocumento, telefono, fecha_nacimiento })
 
   const { error } = await supabase
     .from('alumnos')
@@ -26,7 +31,8 @@ export async function guardarPerfil(formData: FormData) {
       tipo_documento: tipoDocumento || null,
       numero_documento: numeroDocumento || null,
       telefono: telefono || null,
-      perfil_completo: !!(tipoDocumento && numeroDocumento && telefono)
+      fecha_nacimiento,
+      perfil_completo: !!(tipoDocumento && numeroDocumento && telefono && fecha_nacimiento)
     })
     .eq('email', user.email)
 

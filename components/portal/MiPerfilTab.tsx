@@ -13,6 +13,14 @@ export default function MiPerfilTab({ alumno }: Props) {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
+  const fechaGuardada = alumno.fecha_nacimiento
+    ? new Date(alumno.fecha_nacimiento + 'T00:00:00')
+    : null;
+
+  const diaInicial = fechaGuardada?.getDate() ?? '';
+  const mesInicial = fechaGuardada ? fechaGuardada.getMonth() + 1 : '';
+  const anioInicial = fechaGuardada?.getFullYear() ?? '';
+
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
@@ -113,18 +121,67 @@ export default function MiPerfilTab({ alumno }: Props) {
           </div>
         </div>
 
-        <div className="space-y-2">
-          <label className="font-mono text-[10px] text-neon-green uppercase tracking-widest font-bold flex items-center gap-2">
-            <Phone size={12} /> Nº Celular
-          </label>
-          <input
-            name="telefono"
-            type="text"
-            defaultValue={alumno.telefono || ''}
-            required
-            className="w-full bg-black border-2 border-white/10 p-3 text-white focus:border-neon-green outline-none font-mono text-sm"
-            placeholder="300 000 0000"
-          />
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="space-y-2">
+            <label className="font-mono text-[10px] text-neon-green uppercase tracking-widest font-bold flex items-center gap-2">
+              <Phone size={12} /> Nº Celular
+            </label>
+            <input
+              name="telefono"
+              type="text"
+              defaultValue={alumno.telefono || ''}
+              required
+              className="w-full bg-black border-2 border-white/10 p-3 text-white focus:border-neon-green outline-none font-mono text-sm"
+              placeholder="300 000 0000"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="font-mono text-[10px] text-neon-green uppercase tracking-widest font-bold flex items-center gap-2">
+              Fecha de Nacimiento
+            </label>
+            <div className="flex gap-2">
+              <select
+                name="dia"
+                required
+                defaultValue={diaInicial}
+                className="flex-1 bg-black border-2 border-white/10 p-3 text-white focus:border-neon-green outline-none font-mono text-xs appearance-none"
+              >
+                <option value="">Día</option>
+                {Array.from({ length: 31 }, (_, i) => i + 1).map(d => (
+                  <option key={d} value={d}>{d}</option>
+                ))}
+              </select>
+              <select
+                name="mes"
+                required
+                defaultValue={mesInicial}
+                className="flex-2 bg-black border-2 border-white/10 p-3 text-white focus:border-neon-green outline-none font-mono text-xs appearance-none"
+              >
+                <option value="">Mes</option>
+                {[
+                  'Enero','Febrero','Marzo','Abril','Mayo','Junio',
+                  'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'
+                ].map((m, i) => (
+                  <option key={i} value={i + 1}>{m}</option>
+                ))}
+              </select>
+              <select
+                name="anioNacimiento"
+                required
+                defaultValue={anioInicial}
+                className="flex-1 bg-black border-2 border-white/10 p-3 text-white focus:border-neon-green outline-none font-mono text-xs appearance-none"
+              >
+                <option value="">Año</option>
+                {Array.from(
+                  { length: new Date().getFullYear() - 1924 },
+                  (_, i) => new Date().getFullYear() - i
+                ).map(a => (
+                  <option key={a} value={a}>{a}</option>
+                ))}
+              </select>
+            </div>
+          </div>
         </div>
 
         <div className="space-y-4">

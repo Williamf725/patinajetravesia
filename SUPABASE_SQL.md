@@ -16,6 +16,7 @@ CREATE TABLE IF NOT EXISTS public.alumnos (
     tipo_documento TEXT, -- CC, TI, Pasaporte, NIT
     numero_documento TEXT,
     telefono TEXT,
+    fecha_nacimiento DATE,
     perfil_completo BOOLEAN DEFAULT false,
     activo BOOLEAN DEFAULT true,
     created_at TIMESTAMPTZ DEFAULT now()

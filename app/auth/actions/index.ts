@@ -127,6 +127,7 @@ export async function registrarAlumno(_prevState: unknown, formData: FormData) {
     tipo_documento: formData.get('tipoDocumento') as string,
     numero_documento: formData.get('numeroDocumento') as string,
     telefono: formData.get('telefono') as string,
+    fecha_nacimiento: `${formData.get('anioNacimiento')}-${String(formData.get('mes')).padStart(2, '0')}-${String(formData.get('dia')).padStart(2, '0')}`,
     perfil_completo: true,
     activo: true,
   })

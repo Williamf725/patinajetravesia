@@ -8,6 +8,7 @@ export type Alumno = {
   tipo_documento: string | null;
   numero_documento: string | null;
   telefono: string | null;
+  fecha_nacimiento: string | null;
   perfil_completo: boolean;
   activo: boolean;
   created_at: string;

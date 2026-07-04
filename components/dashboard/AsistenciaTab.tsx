@@ -340,6 +340,10 @@ export default function AsistenciaTab() {
                     {[
                         { label: 'Email', valor: alumnoModal.email || 'No registrado' },
                         { label: 'Teléfono', valor: alumnoModal.telefono || 'No registrado' },
+                        { label: 'Fecha de nacimiento', valor: alumnoModal.fecha_nacimiento
+                          ? new Date(alumnoModal.fecha_nacimiento + 'T00:00:00').toLocaleDateString('es-CO', { day: 'numeric', month: 'long', year: 'numeric' })
+                          : 'No registrada'
+                        },
                         { label: 'Tipo documento', valor: alumnoModal.tipo_documento?.replace('_', ' ') || 'No registrado' },
                         { label: 'Nº documento', valor: alumnoModal.numero_documento || 'No registrado' },
                         { label: 'Perfil', valor: alumnoModal.perfil_completo ? '✅ Completo' : '⚠️ Incompleto' },
