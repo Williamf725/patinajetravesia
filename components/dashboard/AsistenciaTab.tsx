@@ -14,7 +14,7 @@ import {
 import { es } from 'date-fns/locale';
 import * as XLSX from 'xlsx';
 import { Plus, Save, Download, Trash2, ShieldCheck, Fingerprint, Phone, User as UserIcon } from 'lucide-react';
-import { Alumno, Asistencia } from '@/types/database';
+import { Alumno, Asistencia, Inscripcion, Plan } from '@/types/database';
 
 const DIAS_CLASE = {
   TODOS: 'Todos',
@@ -29,27 +29,37 @@ const DAY_INDICES: Record<number, string> = {
   6: 'Sábado'
 };
 
+// Extended type for modal
+type AlumnoConInscripcion = Alumno & {
+    inscripciones?: (Inscripcion & { plan: Plan | null })[];
+};
+
 export default function AsistenciaTab() {
   const [loading, setLoading] = useState(true);
-  const [alumnos, setAlumnos] = useState<Alumno[]>([]);
+  const [alumnos, setAlumnos] = useState<AlumnoConInscripcion[]>([]);
   const [asistencia, setAsistencia] = useState<Asistencia[]>([]);
   const [mes, setMes] = useState(new Date());
   const [filtroDia, setFiltroDia] = useState('Todos');
   const [showAddModal, setShowAddModal] = useState(false);
   const [newAlumno, setNewAlumno] = useState({ nombre: '', apellido: '', email: '', tipo_documento: '', numero_documento: '', telefono: '' });
   const [isSaving, setIsSaving] = useState(false);
+  const [alumnoModal, setAlumnoModal] = useState<AlumnoConInscripcion | null>(null);
 
   const supabase = createClient();
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-    const { data: alumnosData } = await supabase.from('alumnos').select('*').order('numero_alumno');
+    const { data: alumnosData } = await supabase
+        .from('alumnos')
+        .select('*, inscripciones(*, plan:planes(*))')
+        .order('numero_alumno');
+
     const { data: asistenciaData } = await supabase.from('asistencia')
       .select('*')
       .gte('fecha', format(startOfMonth(mes), 'yyyy-MM-dd'))
       .lte('fecha', format(endOfMonth(mes), 'yyyy-MM-dd'));
 
-    setAlumnos((alumnosData as Alumno[]) || []);
+    setAlumnos((alumnosData as AlumnoConInscripcion[]) || []);
     setAsistencia((asistenciaData as Asistencia[]) || []);
     setLoading(false);
   }, [mes, supabase]);
@@ -249,13 +259,23 @@ export default function AsistenciaTab() {
                 </td>
                 <td className="p-3 border-r border-white/20 sticky left-12 bg-[#1a1a1a] z-10">
                    <div className="flex flex-col gap-1">
-                      <input
-                        defaultValue={alumno.nombre_completo}
-                        onBlur={(e) => handleUpdateAlumno(alumno.id, { nombre_completo: e.target.value })}
-                        className="bg-transparent border-b border-transparent focus:border-neon-green outline-none uppercase font-anton text-sm text-white"
-                      />
-                      <div className="flex flex-wrap gap-3 text-[8px] text-white/40 font-bold">
-                         <span className="flex items-center gap-1"><ShieldCheck size={10} /> {alumno.tipo_documento || '---'}</span>
+                      <button
+                        onClick={() => setAlumnoModal(alumno)}
+                        style={{ background: 'none', border: 'none', color: '#b8d300',
+                        cursor: 'pointer', fontFamily: 'Anton', fontSize: '16px',
+                        textDecoration: 'underline', textUnderlineOffset: '4px', textAlign: 'left', padding: 0 }}>
+                        {alumno.nombre_completo}
+                      </button>
+                      <div className="flex flex-wrap gap-3 text-[8px] text-white/40 font-bold uppercase">
+                         <span
+                           className="flex items-center gap-1 cursor-pointer hover:text-white"
+                           onClick={() => {
+                              const newNombre = prompt('Nuevo nombre completo:', alumno.nombre_completo);
+                              if (newNombre) handleUpdateAlumno(alumno.id, { nombre_completo: newNombre });
+                           }}
+                         >
+                           <ShieldCheck size={10} /> {alumno.tipo_documento?.replace('_', ' ') || '---'}
+                         </span>
                          <span className="flex items-center gap-1"><Fingerprint size={10} /> {alumno.numero_documento || '---'}</span>
                          <span className="flex items-center gap-1"><Phone size={10} /> {alumno.telefono || '---'}</span>
                       </div>
@@ -292,6 +312,68 @@ export default function AsistenciaTab() {
         </table>
       </div>
 
+      {/* Alumno Info Modal */}
+      {alumnoModal && (
+        <div
+            className="fixed inset-0 bg-black/85 flex items-center justify-center z-[1000] p-4"
+            onClick={() => setAlumnoModal(null)}
+        >
+            <div
+                className="bg-[#111] border-[3px] border-[#b8d300] p-8 max-w-[480px] w-full relative max-h-[90vh] overflow-y-auto shadow-brutal-lg"
+                onClick={e => e.stopPropagation()}
+            >
+                <button
+                    onClick={() => setAlumnoModal(null)}
+                    className="absolute top-4 right-4 bg-transparent border-none text-white text-2xl cursor-pointer hover:text-hot-pink transition-colors"
+                >
+                    ✕
+                </button>
+
+                <h2 className="text-[#b8d300] font-anton text-2xl mb-1 uppercase">
+                    {alumnoModal.nombre_completo}
+                </h2>
+                <p className="text-[#ffb1c4] text-[11px] tracking-[3px] mb-6 font-mono font-bold">
+                    ALUMNO #{alumnoModal.numero_alumno}
+                </p>
+
+                <div className="grid gap-3">
+                    {[
+                        { label: 'Email', valor: alumnoModal.email || 'No registrado' },
+                        { label: 'Teléfono', valor: alumnoModal.telefono || 'No registrado' },
+                        { label: 'Tipo documento', valor: alumnoModal.tipo_documento?.replace('_', ' ') || 'No registrado' },
+                        { label: 'Nº documento', valor: alumnoModal.numero_documento || 'No registrado' },
+                        { label: 'Perfil', valor: alumnoModal.perfil_completo ? '✅ Completo' : '⚠️ Incompleto' },
+                        { label: 'Estado', valor: alumnoModal.activo ? '✅ Activo' : '❌ Inactivo' },
+                    ].map(({ label, valor }) => (
+                        <div key={label} className="flex gap-3 border-b border-[#222] pb-2 items-center">
+                            <span className="text-[#666] text-[10px] tracking-[2px] min-w-[140px] uppercase font-mono">{label}</span>
+                            <span className="text-white text-xs font-mono">{valor}</span>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Plan activo logic (find plan for current period if exists) */}
+                {alumnoModal.inscripciones && alumnoModal.inscripciones.length > 0 && (
+                    <div className="mt-6 pt-5 border-t-2 border-[#333]">
+                        <p className="text-[#ffb1c4] text-[11px] tracking-[3px] mb-4 font-mono font-bold uppercase tracking-widest">Plan Actual</p>
+                        {[
+                            { label: 'Plan', valor: alumnoModal.inscripciones[0].plan?.nombre },
+                            { label: 'Precio', valor: `$${alumnoModal.inscripciones[0].plan?.precio?.toLocaleString('es-CO')}` },
+                            { label: 'Clases', valor: `${alumnoModal.inscripciones[0].clases_usadas} / ${alumnoModal.inscripciones[0].plan?.clases_incluidas}` },
+                            { label: 'Estado pago', valor: alumnoModal.inscripciones[0].estado },
+                            { label: 'Vence', valor: alumnoModal.inscripciones[0].fecha_vencimiento ? format(new Date(alumnoModal.inscripciones[0].fecha_vencimiento), 'dd/MM/yyyy') : 'No definida' },
+                        ].map(({ label, valor }) => (
+                            <div key={label} className="flex gap-3 border-b border-[#222] pb-2 mb-2 items-center">
+                                <span className="text-[#666] text-[10px] tracking-[2px] min-w-[140px] uppercase font-mono">{label}</span>
+                                <span className="text-white text-xs font-mono uppercase">{valor}</span>
+                            </div>
+                        ))}
+                    </div>
+                )}
+            </div>
+        </div>
+      )}
+
       {/* Add Alumno Modal */}
       {showAddModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
@@ -317,10 +399,10 @@ export default function AsistenciaTab() {
                     <label className="font-mono text-[10px] text-white/40 uppercase">Tipo Doc</label>
                     <select value={newAlumno.tipo_documento} onChange={e => setNewAlumno({...newAlumno, tipo_documento: e.target.value})} className="bg-black border-b-2 border-white/20 p-2 outline-none focus:border-neon-green font-mono text-xs">
                         <option value="">...</option>
-                        <option value="Cédula de Ciudadanía">CC</option>
-                        <option value="Tarjeta de Identidad">TI</option>
-                        <option value="Pasaporte">Pasaporte</option>
-                        <option value="NIT">NIT</option>
+                        <option value="cedula_ciudadania">CC</option>
+                        <option value="tarjeta_identidad">TI</option>
+                        <option value="pasaporte">Pasaporte</option>
+                        <option value="nit">NIT</option>
                     </select>
                   </div>
                   <div className="flex flex-col gap-1">

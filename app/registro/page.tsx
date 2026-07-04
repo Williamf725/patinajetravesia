@@ -127,11 +127,11 @@ export default function RegistroPage() {
                 required
                 className={`bg-transparent border-b-2 p-2 text-white outline-none transition-all font-mono text-sm appearance-none ${allFieldErrors.tipoDocumento ? 'border-hot-pink' : 'border-white/20 focus:border-neon-green'}`}
               >
-                <option value="" className="bg-black">Seleccionar...</option>
-                <option value="Cédula de Ciudadanía" className="bg-black">Cédula de Ciudadanía</option>
-                <option value="Tarjeta de Identidad" className="bg-black">Tarjeta de Identidad</option>
-                <option value="Pasaporte" className="bg-black">Pasaporte</option>
-                <option value="NIT" className="bg-black">NIT</option>
+                <option value="" className="bg-black">Selecciona un tipo</option>
+                <option value="cedula_ciudadania" className="bg-black">Cédula de Ciudadanía</option>
+                <option value="tarjeta_identidad" className="bg-black">Tarjeta de Identidad</option>
+                <option value="pasaporte" className="bg-black">Pasaporte</option>
+                <option value="nit" className="bg-black">NIT</option>
               </select>
               {allFieldErrors.tipoDocumento && <span className="text-hot-pink font-mono text-[9px] uppercase tracking-tighter">{allFieldErrors.tipoDocumento}</span>}
             </div>

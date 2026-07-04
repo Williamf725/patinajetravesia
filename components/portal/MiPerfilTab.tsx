@@ -2,9 +2,8 @@
 
 import React, { useState } from 'react';
 import { Alumno } from '@/types/database';
-import { updatePerfil } from '@/app/auth/actions/perfil';
+import { guardarPerfil } from '@/app/auth/actions/perfil';
 import { User, ShieldCheck, Save, Phone, Fingerprint } from 'lucide-react';
-import { toast } from 'sonner';
 
 interface Props {
   alumno: Alumno;
@@ -12,19 +11,26 @@ interface Props {
 
 export default function MiPerfilTab({ alumno }: Props) {
   const [loading, setLoading] = useState(false);
+  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setLoading(true);
+    setMessage(null);
     const formData = new FormData(e.currentTarget);
 
     try {
-      await updatePerfil(formData);
-      toast.success('✅ Perfil actualizado correctamente');
-      window.location.reload();
+      const result = await guardarPerfil(formData);
+      if (result.success) {
+        setMessage({ type: 'success', text: '✅ Perfil actualizado correctamente' });
+        // Optionally reload to refresh the context data but keep the message visible for a bit
+        setTimeout(() => window.location.reload(), 2000);
+      } else if (result.error) {
+        setMessage({ type: 'error', text: result.error });
+      }
     } catch (err) {
       console.error(err);
-      toast.error('Error al actualizar el perfil');
+      setMessage({ type: 'error', text: 'Error al conectar con el servidor' });
     } finally {
       setLoading(false);
     }
@@ -80,16 +86,16 @@ export default function MiPerfilTab({ alumno }: Props) {
               <ShieldCheck size={12} /> Tipo Documento
             </label>
             <select
-              name="tipo_documento"
+              name="tipoDocumento"
               defaultValue={alumno.tipo_documento || ''}
               required
               className="w-full bg-black border-2 border-white/10 p-3 text-white focus:border-neon-green outline-none font-mono text-sm appearance-none"
             >
-              <option value="">Seleccionar...</option>
-              <option value="Cédula de Ciudadanía">Cédula de Ciudadanía</option>
-              <option value="Tarjeta de Identidad">Tarjeta de Identidad</option>
-              <option value="Pasaporte">Pasaporte</option>
-              <option value="NIT">NIT</option>
+              <option value="">Selecciona un tipo</option>
+              <option value="cedula_ciudadania">Cédula de Ciudadanía</option>
+              <option value="tarjeta_identidad">Tarjeta de Identidad</option>
+              <option value="pasaporte">Pasaporte</option>
+              <option value="nit">NIT</option>
             </select>
           </div>
           <div className="space-y-2">
@@ -97,7 +103,7 @@ export default function MiPerfilTab({ alumno }: Props) {
               <Fingerprint size={12} /> Nº Documento
             </label>
             <input
-              name="numero_documento"
+              name="numeroDocumento"
               type="text"
               defaultValue={alumno.numero_documento || ''}
               required
@@ -121,13 +127,25 @@ export default function MiPerfilTab({ alumno }: Props) {
           />
         </div>
 
-        <button
-          type="submit"
-          disabled={loading}
-          className="btn-tape w-full py-4 mt-4 flex items-center justify-center gap-3 text-xl font-anton disabled:opacity-50"
-        >
-          <Save size={24} /> {loading ? 'GUARDANDO...' : 'GUARDAR CAMBIOS'}
-        </button>
+        <div className="space-y-4">
+          <button
+            type="submit"
+            disabled={loading}
+            className="btn-tape w-full py-4 flex items-center justify-center gap-3 text-xl font-anton disabled:opacity-50"
+          >
+            <Save size={24} /> {loading ? 'GUARDANDO...' : 'GUARDAR CAMBIOS'}
+          </button>
+
+          {message && (
+            <p
+              className={`text-center font-mono text-xs uppercase font-bold py-2 px-4 border-2 ${
+                message.type === 'success' ? 'text-[#00ff88] border-[#00ff88]/20 bg-[#00ff88]/5' : 'text-[#ff2d78] border-[#ff2d78]/20 bg-[#ff2d78]/5'
+              }`}
+            >
+              {message.text}
+            </p>
+          )}
+        </div>
       </form>
     </div>
   );
