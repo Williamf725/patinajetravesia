@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Inscripcion } from '@/types/database';
+import { Inscripcion, Alumno } from '@/types/database';
 import { createClient } from '@/lib/supabase/client';
 import { updateInscripcionEstado } from '@/app/auth/actions/admin';
 import { ClipboardList, Check, X, Filter, Search, ShieldCheck, Fingerprint, Phone } from 'lucide-react';
@@ -11,6 +11,11 @@ export default function InscripcionesTab() {
   const [filter, setFilter] = useState<'todos' | 'pendiente' | 'aprobado' | 'rechazado'>('pendiente');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+
+  const [alumnos, setAlumnos] = useState<Alumno[]>([]);
+  const [loadingAlumnos, setLoadingAlumnos] = useState(true);
+  const [seguroSearch, setSeguroSearch] = useState('');
+
   const supabase = createClient();
 
   const fetchInscripciones = useCallback(async () => {
@@ -25,9 +30,110 @@ export default function InscripcionesTab() {
     setLoading(false);
   }, [supabase]);
 
+  const fetchAlumnos = useCallback(async () => {
+    setLoadingAlumnos(true);
+    const { data } = await supabase
+      .from('alumnos')
+      .select('*')
+      .order('numero_alumno', { ascending: true });
+    setAlumnos((data as Alumno[]) || []);
+    setLoadingAlumnos(false);
+  }, [supabase]);
+
   useEffect(() => {
     fetchInscripciones();
-  }, [fetchInscripciones]);
+    fetchAlumnos();
+  }, [fetchInscripciones, fetchAlumnos]);
+
+  const handleTogglePago = async (alumnoId: string, newVal: boolean, currentFechaPago: string | null | undefined) => {
+    try {
+      if (newVal) {
+        const fechaPago = currentFechaPago || new Date().toISOString().split('T')[0];
+        const fechaVenc = new Date(
+          new Date(fechaPago).setFullYear(new Date(fechaPago).getFullYear() + 1)
+        ).toISOString().split('T')[0];
+
+        const { error } = await supabase
+          .from('alumnos')
+          .update({
+            inscripcion_pagada: true,
+            fecha_pago_inscripcion: fechaPago,
+            fecha_vencimiento_seguro: fechaVenc
+          })
+          .eq('id', alumnoId);
+
+        if (error) throw error;
+      } else {
+        const { error } = await supabase
+          .from('alumnos')
+          .update({
+            inscripcion_pagada: false,
+            fecha_pago_inscripcion: null,
+            fecha_vencimiento_seguro: null
+          })
+          .eq('id', alumnoId);
+
+        if (error) throw error;
+      }
+
+      fetchAlumnos();
+      fetchInscripciones();
+    } catch (err) {
+      alert('Error al actualizar inscripción: ' + (err instanceof Error ? err.message : String(err)));
+    }
+  };
+
+  const handleFechaPagoChange = async (alumnoId: string, dateVal: string) => {
+    try {
+      if (!dateVal) {
+        const { error } = await supabase
+          .from('alumnos')
+          .update({
+            fecha_pago_inscripcion: null,
+            fecha_vencimiento_seguro: null
+          })
+          .eq('id', alumnoId);
+        if (error) throw error;
+      } else {
+        const fechaVenc = new Date(
+          new Date(dateVal).setFullYear(new Date(dateVal).getFullYear() + 1)
+        ).toISOString().split('T')[0];
+
+        const { error } = await supabase
+          .from('alumnos')
+          .update({
+            fecha_pago_inscripcion: dateVal,
+            fecha_vencimiento_seguro: fechaVenc
+          })
+          .eq('id', alumnoId);
+        if (error) throw error;
+      }
+
+      fetchAlumnos();
+      fetchInscripciones();
+    } catch (err) {
+      alert('Error al actualizar fecha de pago: ' + (err instanceof Error ? err.message : String(err)));
+    }
+  };
+
+  const handleObservacionesLocalChange = (alumnoId: string, textVal: string) => {
+    setAlumnos(prev => prev.map(a => a.id === alumnoId ? { ...a, observaciones: textVal } : a));
+  };
+
+  const handleObservacionesSave = async (alumnoId: string, textVal: string) => {
+    try {
+      const { error } = await supabase
+        .from('alumnos')
+        .update({ observaciones: textVal || null })
+        .eq('id', alumnoId);
+      if (error) throw error;
+
+      fetchAlumnos();
+      fetchInscripciones();
+    } catch (err) {
+      alert('Error al guardar observaciones: ' + (err instanceof Error ? err.message : String(err)));
+    }
+  };
 
   const handleAction = async (id: string, estado: 'aprobado' | 'rechazado' | 'pendiente') => {
     try {
@@ -51,6 +157,12 @@ export default function InscripcionesTab() {
     const numA = a.alumno?.numero_alumno || 999;
     const numB = b.alumno?.numero_alumno || 999;
     return numA - numB;
+  });
+
+  const filteredAlumnos = alumnos.filter(a => {
+    const term = seguroSearch.toLowerCase();
+    return a.nombre_completo.toLowerCase().includes(term) ||
+           (a.email && a.email.toLowerCase().includes(term));
   });
 
   return (
@@ -186,6 +298,134 @@ export default function InscripcionesTab() {
                   </td>
                 </tr>
               ))
+            )}
+          </tbody>
+        </table>
+      </div>
+
+      {/* Sección Inscripciones y Seguros */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-[#1a1a1a] p-6 border-4 border-white shadow-brutal mt-12">
+        <div className="flex items-center gap-4">
+           <div className="bg-neon-green p-2 text-black">
+              <ShieldCheck size={24} />
+           </div>
+           <div>
+             <h2 className="font-anton text-3xl uppercase leading-none">Inscripciones y Seguros</h2>
+             <p className="font-mono text-[10px] text-white/40 uppercase tracking-[0.3em]">Control de Pólizas de Seguro Mundial</p>
+           </div>
+        </div>
+
+        {/* Search bar specifically for this table */}
+        <div className="flex items-center gap-2 bg-black/40 px-3 py-2 border border-white/10 w-full lg:w-64">
+          <Search size={16} className="text-white/40" />
+          <input
+            type="text"
+            placeholder="BUSCAR ALUMNO..."
+            value={seguroSearch}
+            onChange={(e) => setSeguroSearch(e.target.value)}
+            className="bg-transparent outline-none font-mono text-[10px] uppercase text-white w-full"
+          />
+        </div>
+      </div>
+
+      <div className="bg-[#1a1a1a] border-4 border-white shadow-brutal overflow-x-auto">
+        <table className="w-full font-mono text-[10px] uppercase tracking-tighter text-left">
+          <thead>
+            <tr className="bg-black border-b-4 border-white">
+              <th className="p-4 border-r border-white/20">Nº</th>
+              <th className="p-4 border-r border-white/20 min-w-[200px]">Nombre Completo</th>
+              <th className="p-4 border-r border-white/20">Email</th>
+              <th className="p-4 border-r border-white/20 text-center">Inscripción Pagada</th>
+              <th className="p-4 border-r border-white/20 text-center">Fecha Pago</th>
+              <th className="p-4 border-r border-white/20 text-center">Vencimiento Seguro</th>
+              <th className="p-4">Observaciones</th>
+            </tr>
+          </thead>
+          <tbody>
+            {loadingAlumnos ? (
+              <tr><td colSpan={7} className="p-10 text-center animate-pulse">CARGANDO ALUMNOS...</td></tr>
+            ) : filteredAlumnos.length === 0 ? (
+              <tr><td colSpan={7} className="p-10 text-center text-white/20">NO HAY ALUMNOS QUE COINCIDAN</td></tr>
+            ) : (
+              filteredAlumnos.map((a) => {
+                // Determine expiration status color
+                // Resaltar en rojo las filas donde el seguro ya venció, en naranja las que vencen en menos de 30 días.
+                let rowBgClass = "";
+                let vencLabelColorClass = "text-white";
+
+                if (a.inscripcion_pagada && a.fecha_vencimiento_seguro) {
+                  const hoy = new Date();
+                  hoy.setHours(0,0,0,0);
+                  const venc = new Date(a.fecha_vencimiento_seguro + 'T00:00:00');
+                  venc.setHours(0,0,0,0);
+                  const diff = venc.getTime() - hoy.getTime();
+                  const diffDays = Math.ceil(diff / (1000 * 60 * 60 * 24));
+
+                  if (diffDays < 0) {
+                    rowBgClass = "bg-red-950/40 border-l-4 border-l-hot-pink";
+                    vencLabelColorClass = "text-hot-pink font-bold";
+                  } else if (diffDays <= 30) {
+                    rowBgClass = "bg-orange-950/40 border-l-4 border-l-orange-500";
+                    vencLabelColorClass = "text-orange-500 font-bold";
+                  }
+                }
+
+                return (
+                  <tr key={a.id} className={`border-b border-white/10 hover:bg-white/5 transition-colors ${rowBgClass}`}>
+                    <td className="p-4 border-r border-white/20 font-bold text-neon-green">
+                      {a.numero_alumno}
+                    </td>
+                    <td className="p-4 border-r border-white/20 font-anton text-sm text-white">
+                      {a.nombre_completo}
+                    </td>
+                    <td className="p-4 border-r border-white/20 text-[9px] text-white/60">
+                      {a.email}
+                    </td>
+                    <td className="p-4 border-r border-white/20 text-center">
+                      <button
+                        onClick={() => handleTogglePago(a.id, !a.inscripcion_pagada, a.fecha_pago_inscripcion)}
+                        className={`px-3 py-1.5 font-anton text-[10px] tracking-wider transition-transform hover:scale-105 active:scale-95 ${
+                          a.inscripcion_pagada
+                            ? 'bg-neon-green text-black'
+                            : 'bg-hot-pink text-white'
+                        }`}
+                      >
+                        {a.inscripcion_pagada ? '✅ SÍ' : '❌ PENDIENTE'}
+                      </button>
+                    </td>
+                    <td className="p-4 border-r border-white/20 text-center">
+                      <input
+                        type="date"
+                        value={a.fecha_pago_inscripcion || ''}
+                        onChange={(e) => handleFechaPagoChange(a.id, e.target.value)}
+                        className="bg-black/60 border border-white/20 p-1.5 text-white text-[10px] outline-none focus:border-neon-green w-full max-w-[130px]"
+                      />
+                    </td>
+                    <td className={`p-4 border-r border-white/20 text-center ${vencLabelColorClass}`}>
+                      {a.fecha_vencimiento_seguro ? (
+                        <div className="flex flex-col gap-0.5">
+                          <span className="font-bold">{a.fecha_vencimiento_seguro}</span>
+                          <span className="text-[8px] opacity-60">
+                            ({new Date(a.fecha_vencimiento_seguro + 'T00:00:00').toLocaleDateString('es-CO', { day: 'numeric', month: 'short' })})
+                          </span>
+                        </div>
+                      ) : (
+                        <span className="text-white/20 italic">No activo</span>
+                      )}
+                    </td>
+                    <td className="p-4">
+                      <input
+                        type="text"
+                        value={a.observaciones || ''}
+                        onChange={(e) => handleObservacionesLocalChange(a.id, e.target.value)}
+                        onBlur={(e) => handleObservacionesSave(a.id, e.target.value)}
+                        placeholder="..."
+                        className="bg-transparent border-b border-white/10 hover:border-white/30 text-[10px] text-white outline-none focus:border-neon-green w-full p-1"
+                      />
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>

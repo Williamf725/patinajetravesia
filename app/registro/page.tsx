@@ -258,6 +258,21 @@ export default function RegistroPage() {
             </div>
           )}
 
+          {/* Info inscripción y seguro */}
+          <div style={{ background: '#111', border: '2px solid #00ff88', padding: '16px', marginBottom: '24px' }}>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="https://res.cloudinary.com/dvpnkr2i9/image/upload/v1784131243/seguro-mundial_phqk3p.png"
+              style={{ height: '40px', marginBottom: '12px' }} alt="Seguro Mundial" />
+            <p style={{ color: '#fff', fontSize: '14px', margin: '0 0 8px' }} className="font-space">
+              {/* Info seguro registro */}
+              Al unirte al club pagas una única vez $20.000 COP de inscripción que incluye tu póliza de seguro contra accidentes con Seguro Mundial vigente por 1 año.
+            </p>
+            <p style={{ color: '#00ff88', fontSize: '12px', margin: 0 }} className="font-mono">
+              {/* Dato de pago */}
+              Paga por Nequi a @SPA442 — A nombre de Silvia Peña
+            </p>
+          </div>
+
           <button
             type="submit"
             disabled={isPending}

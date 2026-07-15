@@ -348,6 +348,13 @@ export default function AsistenciaTab() {
                         { label: 'Nº documento', valor: alumnoModal.numero_documento || 'No registrado' },
                         { label: 'Perfil', valor: alumnoModal.perfil_completo ? '✅ Completo' : '⚠️ Incompleto' },
                         { label: 'Estado', valor: alumnoModal.activo ? '✅ Activo' : '❌ Inactivo' },
+                        { label: 'Inscripción pagada', valor: alumnoModal.inscripcion_pagada ? '✅ Sí' : '❌ Pendiente' },
+                        { label: 'Vencimiento seguro', valor: alumnoModal.fecha_vencimiento_seguro
+                            ? new Date(alumnoModal.fecha_vencimiento_seguro + 'T00:00:00').toLocaleDateString('es-CO', {
+                                day: 'numeric', month: 'long', year: 'numeric'
+                              })
+                            : 'No registrado'
+                        },
                     ].map(({ label, valor }) => (
                         <div key={label} className="flex gap-3 border-b border-[#222] pb-2 items-center">
                             <span className="text-[#666] text-[10px] tracking-[2px] min-w-[140px] uppercase font-mono">{label}</span>

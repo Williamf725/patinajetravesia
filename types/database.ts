@@ -12,6 +12,10 @@ export type Alumno = {
   perfil_completo: boolean;
   activo: boolean;
   created_at: string;
+  inscripcion_pagada?: boolean;
+  fecha_pago_inscripcion?: string | null;
+  fecha_vencimiento_seguro?: string | null;
+  observaciones?: string | null;
 };
 
 export type Plan = {
