@@ -19,3 +19,8 @@
  ○ Compiling /registro ...
  ✓ Compiled /registro in 2.7s (1799 modules)
  GET /registro 200 in 3560ms
+ ✓ Compiled in 1961ms (1619 modules)
+ ✓ Compiled in 295ms (737 modules)
+ ✓ Compiled in 940ms (906 modules)
+<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (102kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
+<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (244kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
