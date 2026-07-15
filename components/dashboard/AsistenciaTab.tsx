@@ -349,11 +349,19 @@ export default function AsistenciaTab() {
                         { label: 'Perfil', valor: alumnoModal.perfil_completo ? '✅ Completo' : '⚠️ Incompleto' },
                         { label: 'Estado', valor: alumnoModal.activo ? '✅ Activo' : '❌ Inactivo' },
                         { label: 'Inscripción pagada', valor: alumnoModal.inscripcion_pagada ? '✅ Sí' : '❌ Pendiente' },
-                        { label: 'Vencimiento seguro', valor: alumnoModal.fecha_vencimiento_seguro
-                            ? new Date(alumnoModal.fecha_vencimiento_seguro + 'T00:00:00').toLocaleDateString('es-CO', {
-                                day: 'numeric', month: 'long', year: 'numeric'
-                              })
-                            : 'No registrado'
+                        { label: 'Vencimiento seguro', valor: (() => {
+                            if (!alumnoModal.fecha_vencimiento_seguro) return 'No registrado';
+                            try {
+                              const date = new Date(alumnoModal.fecha_vencimiento_seguro + 'T00:00:00');
+                              const months = [
+                                'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                                'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+                              ];
+                              return `${date.getDate()} de ${months[date.getMonth()]} de ${date.getFullYear()}`;
+                            } catch {
+                              return alumnoModal.fecha_vencimiento_seguro;
+                            }
+                          })()
                         },
                     ].map(({ label, valor }) => (
                         <div key={label} className="flex gap-3 border-b border-[#222] pb-2 items-center">

@@ -33,11 +33,11 @@ export default function PortalClient({ alumno, planes, inscripcionActual, histor
     if (!fechaStr) return 'No registrada';
     try {
       const date = new Date(fechaStr + 'T00:00:00');
-      return date.toLocaleDateString('es-CO', {
-        day: 'numeric',
-        month: 'long',
-        year: 'numeric'
-      });
+      const months = [
+        'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+        'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+      ];
+      return `${date.getDate()} de ${months[date.getMonth()]} de ${date.getFullYear()}`;
     } catch {
       return fechaStr;
     }
