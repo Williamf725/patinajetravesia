@@ -43,6 +43,7 @@ export default async function PortalPage() {
 
   return (
     <PortalClient
+      userEmail={user.email}
       alumno={alumno}
       planes={planes}
       inscripcionActual={inscripcionActual}

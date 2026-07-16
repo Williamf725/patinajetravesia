@@ -14,6 +14,7 @@ import { selectPlan } from '@/app/auth/actions/portal';
 import { createClient } from '@/lib/supabase/client';
 
 interface Props {
+  userEmail?: string | null;
   alumno: Alumno;
   planes: Plan[];
   inscripcionActual: Inscripcion | null;
@@ -22,11 +23,12 @@ interface Props {
 
 type Tab = 'plan' | 'asistencia' | 'historial' | 'perfil';
 
-export default function PortalClient({ alumno, planes, inscripcionActual, historial }: Props) {
+export default function PortalClient({ userEmail, alumno, planes, inscripcionActual, historial }: Props) {
   const [activeTab, setActiveTab] = useState<Tab>('plan');
   const [tipoPago, setTipoPago] = useState<'solo_inscripcion' | 'inscripcion_y_plan'>('solo_inscripcion');
   const [selectedPlanId, setSelectedPlanId] = useState<string>('');
   const [uploadingInscripcion, setUploadingInscripcion] = useState(false);
+  const [progreso, setProgreso] = useState<number>(0);
   const [errorInscripcion, setErrorInscripcion] = useState<string | null>(null);
 
   const supabase = createClient();
@@ -61,25 +63,51 @@ export default function PortalClient({ alumno, planes, inscripcionActual, histor
     }
 
     setUploadingInscripcion(true);
+    setProgreso(0);
     try {
       const { signature, timestamp, apiKey, cloudName, folder } = await getSignaturaInscripcion();
 
-      const formData = new FormData();
-      formData.append('file', file);
-      formData.append('api_key', apiKey);
-      formData.append('timestamp', timestamp.toString());
-      formData.append('signature', signature);
-      formData.append('folder', folder);
+      const resultado = await new Promise<{ secure_url?: string }>((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+        const formData = new FormData();
+        formData.append('file', file);
+        formData.append('api_key', apiKey);
+        formData.append('timestamp', timestamp.toString());
+        formData.append('signature', signature);
+        formData.append('folder', folder);
 
-      const response = await fetch(
-        `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`,
-        { method: 'POST', body: formData }
-      );
+        xhr.upload.onprogress = (event) => {
+          if (event.lengthComputable) {
+            setProgreso(Math.round((event.loaded / event.total) * 100));
+          }
+        };
 
-      const resultado = await response.json();
-      if (!response.ok) throw new Error(resultado.error?.message || 'Error al subir');
+        xhr.onload = () => {
+          if (xhr.status >= 200 && xhr.status < 300) {
+            try {
+              resolve(JSON.parse(xhr.responseText));
+            } catch {
+              reject(new Error('Respuesta inválida de Cloudinary'));
+            }
+          } else {
+            try {
+              const errData = JSON.parse(xhr.responseText);
+              reject(new Error(errData.error?.message || 'Error al subir a Cloudinary'));
+            } catch {
+              reject(new Error('Error de conexión con Cloudinary'));
+            }
+          }
+        };
 
-      if (resultado.secure_url) {
+        xhr.onerror = () => {
+          reject(new Error('Error de red al subir a Cloudinary'));
+        };
+
+        xhr.open('POST', `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`);
+        xhr.send(formData);
+      });
+
+      if (resultado && resultado.secure_url) {
         // If they chose plan, enroll them in the plan too!
         if (tipoPago === 'inscripcion_y_plan' && selectedPlanId) {
           try {
@@ -89,16 +117,18 @@ export default function PortalClient({ alumno, planes, inscripcionActual, histor
           }
         }
 
-        // Save to alumnos table
-        const { error: updateError } = await supabase
-          .from('alumnos')
-          .update({
-            comprobante_inscripcion_url: resultado.secure_url,
-            comprobante_inscripcion_pendiente: true,
-            tipo_pago_inscripcion: tipoPago,
-            plan_inscripcion_id: tipoPago === 'inscripcion_y_plan' ? selectedPlanId : null
-          })
-          .eq('id', alumno.id);
+        // Save to alumnos table using browser client matching the query logic
+        const targetEmail = userEmail || alumno.email;
+        const query = supabase.from('alumnos').update({
+          comprobante_inscripcion_url: resultado.secure_url,
+          comprobante_inscripcion_pendiente: true,
+          tipo_pago_inscripcion: tipoPago,
+          plan_inscripcion_id: tipoPago === 'inscripcion_y_plan' ? selectedPlanId : null
+        });
+
+        const { error: updateError } = targetEmail
+          ? await query.eq('email', targetEmail)
+          : await query.eq('id', alumno.id);
 
         if (updateError) throw updateError;
 
@@ -342,7 +372,7 @@ export default function PortalClient({ alumno, planes, inscripcionActual, histor
               <div className="border-2 border-dashed border-white/20 p-6 text-center space-y-4">
                 <p className="font-mono text-xs text-white/60 uppercase tracking-widest">SUBE TU COMPROBANTE DE PAGO AQUÍ</p>
                 <label className="btn-tape text-xs py-3 px-6 cursor-pointer inline-flex items-center gap-2">
-                  <Upload size={14} /> {uploadingInscripcion ? 'SUBIENDO...' : 'SELECCIONAR COMPROBANTE'}
+                  <Upload size={14} /> {uploadingInscripcion ? `SUBIENDO... ${progreso}%` : 'SELECCIONAR COMPROBANTE'}
                   <input type="file" className="hidden" accept="image/*,.pdf" onChange={handleUploadInscripcionComprobante} disabled={uploadingInscripcion} />
                 </label>
                 <p className="font-mono text-[9px] text-white/40 uppercase block">
@@ -350,7 +380,7 @@ export default function PortalClient({ alumno, planes, inscripcionActual, histor
                 </p>
                 {uploadingInscripcion && (
                   <div className="w-full bg-white/10 h-2 rounded-full overflow-hidden mt-4 border border-white/20">
-                    <div className="h-full bg-neon-green animate-[pulse_1.5s_infinite]" style={{ width: '100%' }} />
+                    <div className="h-full bg-neon-green transition-all duration-300" style={{ width: `${progreso}%` }} />
                   </div>
                 )}
               </div>
@@ -392,7 +422,7 @@ export default function PortalClient({ alumno, planes, inscripcionActual, histor
 
               {/* Replace option if pending */}
               <label className="bg-black text-white hover:bg-white hover:text-black transition-colors px-4 py-2 font-anton text-xs border-2 border-white cursor-pointer shrink-0 uppercase tracking-widest">
-                REEMPLAZAR COMPROBANTE
+                {uploadingInscripcion ? `SUBIENDO... ${progreso}%` : 'REEMPLAZAR COMPROBANTE'}
                 <input type="file" className="hidden" accept="image/*,.pdf" onChange={handleUploadInscripcionComprobante} disabled={uploadingInscripcion} />
               </label>
             </div>
