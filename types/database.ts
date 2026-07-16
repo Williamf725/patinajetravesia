@@ -16,6 +16,10 @@ export type Alumno = {
   fecha_pago_inscripcion?: string | null;
   fecha_vencimiento_seguro?: string | null;
   observaciones?: string | null;
+  comprobante_inscripcion_url?: string | null;
+  comprobante_inscripcion_pendiente?: boolean;
+  tipo_pago_inscripcion?: 'solo_inscripcion' | 'inscripcion_y_plan' | null;
+  plan_inscripcion_id?: string | null;
 };
 
 export type Plan = {

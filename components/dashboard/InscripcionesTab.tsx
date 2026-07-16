@@ -1,10 +1,11 @@
 'use client';
 
 import React, { useState, useEffect, useCallback } from 'react';
-import { Inscripcion, Alumno } from '@/types/database';
+import { Inscripcion, Alumno, Plan } from '@/types/database';
 import { createClient } from '@/lib/supabase/client';
 import { updateInscripcionEstado } from '@/app/auth/actions/admin';
 import { ClipboardList, Check, X, Filter, Search, ShieldCheck, Fingerprint, Phone } from 'lucide-react';
+import { toast } from 'sonner';
 
 export default function InscripcionesTab() {
   const [items, setItems] = useState<Inscripcion[]>([]);
@@ -15,6 +16,8 @@ export default function InscripcionesTab() {
   const [alumnos, setAlumnos] = useState<Alumno[]>([]);
   const [loadingAlumnos, setLoadingAlumnos] = useState(true);
   const [seguroSearch, setSeguroSearch] = useState('');
+  const [selectedAlumnoForInscripcion, setSelectedAlumnoForInscripcion] = useState<Alumno | null>(null);
+  const [planes, setPlanes] = useState<Plan[]>([]);
 
   const supabase = createClient();
 
@@ -40,10 +43,16 @@ export default function InscripcionesTab() {
     setLoadingAlumnos(false);
   }, [supabase]);
 
+  const fetchPlanes = useCallback(async () => {
+    const { data } = await supabase.from('planes').select('*');
+    setPlanes((data as Plan[]) || []);
+  }, [supabase]);
+
   useEffect(() => {
     fetchInscripciones();
     fetchAlumnos();
-  }, [fetchInscripciones, fetchAlumnos]);
+    fetchPlanes();
+  }, [fetchInscripciones, fetchAlumnos, fetchPlanes]);
 
   const handleTogglePago = async (alumnoId: string, newVal: boolean, currentFechaPago: string | null | undefined) => {
     try {
@@ -132,6 +141,69 @@ export default function InscripcionesTab() {
       fetchInscripciones();
     } catch (err) {
       alert('Error al guardar observaciones: ' + (err instanceof Error ? err.message : String(err)));
+    }
+  };
+
+  const handleApproveInscripcionSeguro = async (alumno: Alumno) => {
+    try {
+      const fechaPago = new Date().toISOString().split('T')[0];
+      const fechaVenc = new Date(
+        new Date().setFullYear(new Date().getFullYear() + 1)
+      ).toISOString().split('T')[0];
+
+      const { error } = await supabase
+        .from('alumnos')
+        .update({
+          inscripcion_pagada: true,
+          comprobante_inscripcion_pendiente: false,
+          fecha_pago_inscripcion: fechaPago,
+          fecha_vencimiento_seguro: fechaVenc
+        })
+        .eq('id', alumno.id);
+
+      if (error) throw error;
+
+      if (alumno.tipo_pago_inscripcion === 'inscripcion_y_plan') {
+        const { error: planError } = await supabase
+          .from('inscripciones')
+          .update({
+            estado: 'aprobado',
+            fecha_aprobacion: new Date().toISOString(),
+            comprobante_verificado: true
+          })
+          .eq('alumno_id', alumno.id)
+          .eq('estado', 'pendiente');
+
+        if (planError) {
+          console.warn("No pending monthly plan found or update error:", planError);
+        }
+      }
+
+      toast.success('Póliza activada con éxito');
+      fetchAlumnos();
+      fetchInscripciones();
+    } catch (err) {
+      alert('Error: ' + (err instanceof Error ? err.message : String(err)));
+    }
+  };
+
+  const handleRejectInscripcionSeguro = async (alumnoId: string) => {
+    try {
+      const { error } = await supabase
+        .from('alumnos')
+        .update({
+          comprobante_inscripcion_url: null,
+          comprobante_inscripcion_pendiente: false
+        })
+        .eq('id', alumnoId);
+
+      if (error) throw error;
+
+      toast.success('Comprobante rechazado con éxito');
+      fetchAlumnos();
+      fetchInscripciones();
+    } catch (err) {
+      alert('Error: ' + (err instanceof Error ? err.message : String(err)));
     }
   };
 
@@ -338,14 +410,15 @@ export default function InscripcionesTab() {
               <th className="p-4 border-r border-white/20 text-center">Inscripción Pagada</th>
               <th className="p-4 border-r border-white/20 text-center">Fecha Pago</th>
               <th className="p-4 border-r border-white/20 text-center">Vencimiento Seguro</th>
+              <th className="p-4 border-r border-white/20 text-center">Comprobante Inscripción</th>
               <th className="p-4">Observaciones</th>
             </tr>
           </thead>
           <tbody>
             {loadingAlumnos ? (
-              <tr><td colSpan={7} className="p-10 text-center animate-pulse">CARGANDO ALUMNOS...</td></tr>
+              <tr><td colSpan={8} className="p-10 text-center animate-pulse">CARGANDO ALUMNOS...</td></tr>
             ) : filteredAlumnos.length === 0 ? (
-              <tr><td colSpan={7} className="p-10 text-center text-white/20">NO HAY ALUMNOS QUE COINCIDAN</td></tr>
+              <tr><td colSpan={8} className="p-10 text-center text-white/20">NO HAY ALUMNOS QUE COINCIDAN</td></tr>
             ) : (
               filteredAlumnos.map((a) => {
                 // Determine expiration status color
@@ -413,6 +486,22 @@ export default function InscripcionesTab() {
                         <span className="text-white/20 italic">No activo</span>
                       )}
                     </td>
+                    <td className="p-4 border-r border-white/20 text-center">
+                      {!a.comprobante_inscripcion_url ? (
+                        <span className="text-white/20 italic">Sin comprobante</span>
+                      ) : a.comprobante_inscripcion_pendiente ? (
+                        <button
+                          onClick={() => setSelectedAlumnoForInscripcion(a)}
+                          className="bg-yellow-400 text-black px-2.5 py-1.5 font-anton text-[9px] hover:scale-105 active:scale-95 transition-transform shrink-0"
+                        >
+                          Ver comprobante
+                        </button>
+                      ) : (
+                        <span className="text-neon-green font-bold">
+                          ✅ Verificado
+                        </span>
+                      )}
+                    </td>
                     <td className="p-4">
                       <input
                         type="text"
@@ -430,6 +519,98 @@ export default function InscripcionesTab() {
           </tbody>
         </table>
       </div>
+
+      {/* Proof Preview Modal */}
+      {selectedAlumnoForInscripcion && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4 backdrop-blur-sm"
+          onClick={() => setSelectedAlumnoForInscripcion(null)}
+        >
+          <div
+            className="bg-[#131313] border-4 border-white max-w-2xl w-full max-h-[95vh] flex flex-col shadow-brutal relative"
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setSelectedAlumnoForInscripcion(null)}
+              className="absolute -top-4 -right-4 bg-hot-pink text-white p-2 border-2 border-white hover:scale-110 transition-transform z-10"
+            >
+              <X size={24} />
+            </button>
+
+            <div className="p-4 border-b-2 border-white flex justify-between items-center bg-white/5">
+              <h3 className="font-anton text-xl tracking-wider text-white uppercase italic">COMPROBANTE DE INSCRIPCIÓN</h3>
+              <p className="font-mono text-xs text-neon-green uppercase font-bold">
+                 Alumno #{selectedAlumnoForInscripcion.numero_alumno}
+              </p>
+            </div>
+
+            <div className="flex-1 overflow-auto p-4 flex flex-col items-center gap-4 bg-black/50">
+              {selectedAlumnoForInscripcion.tipo_pago_inscripcion === 'inscripcion_y_plan' && (
+                <div className="w-full bg-[#ffcc00]/10 border-l-4 border-[#ffcc00] p-3 text-[#ffcc00] font-mono text-[10px] uppercase">
+                  <strong>Plan Escogido:</strong> {
+                    planes.find(p => p.id === selectedAlumnoForInscripcion.plan_inscripcion_id)?.nombre || 'Inscripción + Plan'
+                  } (${
+                    planes.find(p => p.id === selectedAlumnoForInscripcion.plan_inscripcion_id)?.precio.toLocaleString() || '---'
+                  } COP)
+                  <p className="text-white/60 text-[8px] mt-1">Al verificar esta inscripción, se auto-aprobará el plan mensual del estudiante.</p>
+                </div>
+              )}
+
+              {selectedAlumnoForInscripcion.comprobante_inscripcion_url ? (
+                selectedAlumnoForInscripcion.comprobante_inscripcion_url.toLowerCase().endsWith('.pdf') ? (
+                  <a
+                    href={selectedAlumnoForInscripcion.comprobante_inscripcion_url}
+                    target="_blank"
+                    rel="noreferrer"
+                    className="bg-white/10 text-white p-6 border border-white/20 flex flex-col items-center gap-2 hover:bg-white/20 transition-all font-mono text-xs uppercase"
+                  >
+                     <span className="text-4xl">📄</span> Ver Documento PDF Externo
+                  </a>
+                ) : (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={selectedAlumnoForInscripcion.comprobante_inscripcion_url}
+                    alt="Comprobante de Inscripción"
+                    className="max-w-full max-h-[50vh] object-contain border-2 border-white/10"
+                  />
+                )
+              ) : (
+                <p className="text-white/40 italic text-xs">Sin comprobante subido</p>
+              )}
+            </div>
+
+            <div className="p-6 border-t-2 border-white bg-white/5 space-y-4">
+              <div className="flex gap-4">
+                <button
+                  onClick={async () => {
+                    await handleApproveInscripcionSeguro(selectedAlumnoForInscripcion);
+                    setSelectedAlumnoForInscripcion(null);
+                  }}
+                  className="flex-1 bg-neon-green text-black font-anton uppercase text-sm py-3 hover:scale-105 transition-transform"
+                >
+                  Verificar y activar póliza
+                </button>
+                <button
+                  onClick={async () => {
+                    await handleRejectInscripcionSeguro(selectedAlumnoForInscripcion.id);
+                    setSelectedAlumnoForInscripcion(null);
+                  }}
+                  className="bg-hot-pink text-white font-anton uppercase text-sm px-6 py-3 hover:scale-105 transition-transform"
+                >
+                  Rechazar
+                </button>
+              </div>
+
+              <button
+                onClick={() => setSelectedAlumnoForInscripcion(null)}
+                className="w-full text-center font-mono text-[10px] text-white/40 uppercase hover:text-white transition-colors"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

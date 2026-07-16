@@ -19,6 +19,14 @@ CREATE TABLE IF NOT EXISTS public.alumnos (
     fecha_nacimiento DATE,
     perfil_completo BOOLEAN DEFAULT false,
     activo BOOLEAN DEFAULT true,
+    inscripcion_pagada BOOLEAN DEFAULT false,
+    fecha_pago_inscripcion DATE,
+    fecha_vencimiento_seguro DATE,
+    observaciones TEXT,
+    comprobante_inscripcion_url TEXT,
+    comprobante_inscripcion_pendiente BOOLEAN DEFAULT false,
+    tipo_pago_inscripcion TEXT CHECK (tipo_pago_inscripcion IN ('solo_inscripcion', 'inscripcion_y_plan')),
+    plan_inscripcion_id UUID REFERENCES public.planes(id),
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
@@ -235,4 +243,17 @@ CREATE POLICY "Alumnos can read their notifications" ON public.notificaciones FO
 CREATE INDEX IF NOT EXISTS idx_asistencia_fecha ON public.asistencia(fecha);
 CREATE INDEX IF NOT EXISTS idx_pagos_mes_anio ON public.pagos(mes, anio);
 CREATE INDEX IF NOT EXISTS idx_galeria_tipo ON public.galeria(tipo);
+
+-- ## 5. Integración del Seguro y Comprobante de Inscripción (Seguro Mundial)
+
+-- Ejecuta esto si estás actualizando un entorno existente
+ALTER TABLE public.alumnos
+ADD COLUMN IF NOT EXISTS inscripcion_pagada BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS fecha_pago_inscripcion DATE,
+ADD COLUMN IF NOT EXISTS fecha_vencimiento_seguro DATE,
+ADD COLUMN IF NOT EXISTS observaciones TEXT,
+ADD COLUMN IF NOT EXISTS comprobante_inscripcion_url TEXT,
+ADD COLUMN IF NOT EXISTS comprobante_inscripcion_pendiente BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS tipo_pago_inscripcion TEXT CHECK (tipo_pago_inscripcion IN ('solo_inscripcion', 'inscripcion_y_plan')),
+ADD COLUMN IF NOT EXISTS plan_inscripcion_id UUID REFERENCES public.planes(id);
 ```
