@@ -10,6 +10,8 @@ import GaleriaTab from '@/components/dashboard/GaleriaTab';
 import InscripcionesTab from '@/components/dashboard/InscripcionesTab';
 import { Users, CreditCard, Image as ImageIcon, LogOut, ClipboardList } from 'lucide-react';
 import { User } from '@supabase/supabase-js';
+import * as XLSX from 'xlsx';
+import { obtenerDatosExport } from '@/app/auth/actions/admin';
 
 const ADMIN_EMAIL = 'clubdepatinajetravesia@gmail.com';
 
@@ -19,8 +21,179 @@ export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<Tab>('inscripciones');
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
+  const [exportando, setExportando] = useState(false);
   const supabase = createClient();
   const router = useRouter();
+
+  const exportarExcel = async () => {
+    try {
+      setExportando(true);
+      const alumnos = await obtenerDatosExport();
+
+      // Hoja 1 — Información personal
+      const datosPersonales = alumnos.map(a => ({
+        'Nº Alumno': a.numero_alumno,
+        'Nombre': a.nombre,
+        'Apellido': a.apellido,
+        'Nombre Completo': a.nombre_completo,
+        'Email': a.email,
+        'Teléfono': a.telefono || 'No registrado',
+        'Tipo Documento': a.tipo_documento?.replace('_', ' ') || 'No registrado',
+        'Nº Documento': a.numero_documento || 'No registrado',
+        'Fecha Nacimiento': a.fecha_nacimiento
+          ? (() => {
+              const date = new Date(a.fecha_nacimiento + 'T00:00:00');
+              const dd = String(date.getDate()).padStart(2, '0');
+              const mm = String(date.getMonth() + 1).padStart(2, '0');
+              return `${dd}/${mm}/${date.getFullYear()}`;
+            })()
+          : 'No registrada',
+        'Perfil Completo': a.perfil_completo ? 'Sí' : 'No',
+        'Estado': a.activo ? 'Activo' : 'Inactivo',
+        'Inscripción Pagada': a.inscripcion_pagada ? 'Sí' : 'No',
+        'Fecha Pago Inscripción': a.fecha_pago_inscripcion
+          ? (() => {
+              const date = new Date(a.fecha_pago_inscripcion + 'T00:00:00');
+              const dd = String(date.getDate()).padStart(2, '0');
+              const mm = String(date.getMonth() + 1).padStart(2, '0');
+              return `${dd}/${mm}/${date.getFullYear()}`;
+            })()
+          : 'No registrada',
+        'Vencimiento Seguro': a.fecha_vencimiento_seguro
+          ? (() => {
+              const date = new Date(a.fecha_vencimiento_seguro + 'T00:00:00');
+              const dd = String(date.getDate()).padStart(2, '0');
+              const mm = String(date.getMonth() + 1).padStart(2, '0');
+              return `${dd}/${mm}/${date.getFullYear()}`;
+            })()
+          : 'No registrada',
+        'Fecha Registro': (() => {
+          const date = new Date(a.created_at);
+          const dd = String(date.getDate()).padStart(2, '0');
+          const mm = String(date.getMonth() + 1).padStart(2, '0');
+          return `${dd}/${mm}/${date.getFullYear()}`;
+        })(),
+      }));
+
+      // Hoja 2 — Planes e inscripciones
+      const datosPlanes: Record<string, unknown>[] = [];
+      alumnos.forEach(a => {
+        if (a.inscripciones && a.inscripciones.length > 0) {
+          a.inscripciones.forEach((i) => {
+            const precioPlanVal = i.plan?.precio
+              ? `$${i.plan.precio.toLocaleString('es-CO')}`
+              : '-';
+            const clasesIncluidasVal = i.plan?.clases_incluidas || 0;
+            const totalPagadoVal = i.total_pagado
+              ? `$${Number(i.total_pagado).toLocaleString('es-CO')}`
+              : '$0';
+            const saldoPendienteVal = i.plan?.precio
+              ? `$${(i.plan.precio - (i.total_pagado || 0)).toLocaleString('es-CO')}`
+              : '-';
+
+            const fechaInicioPlanVal = i.created_at
+              ? (() => {
+                  const date = new Date(i.created_at);
+                  const dd = String(date.getDate()).padStart(2, '0');
+                  const mm = String(date.getMonth() + 1).padStart(2, '0');
+                  return `${dd}/${mm}/${date.getFullYear()}`;
+                })()
+              : 'No definida';
+
+            const fechaFinPlanVal = i.fecha_vencimiento
+              ? (() => {
+                  const date = new Date(i.fecha_vencimiento);
+                  const dd = String(date.getDate()).padStart(2, '0');
+                  const mm = String(date.getMonth() + 1).padStart(2, '0');
+                  return `${dd}/${mm}/${date.getFullYear()}`;
+                })()
+              : 'No definida';
+
+            const fechaInscripcionVal = i.created_at
+              ? (() => {
+                  const date = new Date(i.created_at);
+                  const dd = String(date.getDate()).padStart(2, '0');
+                  const mm = String(date.getMonth() + 1).padStart(2, '0');
+                  return `${dd}/${mm}/${date.getFullYear()}`;
+                })()
+              : '-';
+
+            datosPlanes.push({
+              'Nº Alumno': a.numero_alumno,
+              'Nombre Completo': a.nombre_completo,
+              'Email': a.email,
+              'Plan': i.plan?.nombre || 'Sin plan',
+              'Precio Plan': precioPlanVal,
+              'Clases Incluidas': clasesIncluidasVal,
+              'Mes Inicio': i.mes || '-',
+              'Año Inicio': i.anio || '-',
+              'Estado': i.estado || '-',
+              'Clases Usadas': i.clases_usadas || 0,
+              'Clases Restantes': clasesIncluidasVal - (i.clases_usadas || 0),
+              'Total Pagado': totalPagadoVal,
+              'Saldo Pendiente': saldoPendienteVal,
+              'Fecha Inicio Plan': fechaInicioPlanVal,
+              'Fecha Fin Plan': fechaFinPlanVal,
+              'Fecha Inscripción': fechaInscripcionVal,
+            });
+          });
+        } else {
+          datosPlanes.push({
+            'Nº Alumno': a.numero_alumno,
+            'Nombre Completo': a.nombre_completo,
+            'Email': a.email,
+            'Plan': 'Sin plan activo',
+            'Precio Plan': '-',
+            'Clases Incluidas': 0,
+            'Mes Inicio': '-',
+            'Año Inicio': '-',
+            'Estado': '-',
+            'Clases Usadas': 0,
+            'Clases Restantes': 0,
+            'Total Pagado': '$0',
+            'Saldo Pendiente': '-',
+            'Fecha Inicio Plan': '-',
+            'Fecha Fin Plan': '-',
+            'Fecha Inscripción': '-',
+          });
+        }
+      });
+
+      // Crear workbook con dos hojas
+      const wb = XLSX.utils.book_new();
+
+      const ws1 = XLSX.utils.json_to_sheet(datosPersonales);
+      const ws2 = XLSX.utils.json_to_sheet(datosPlanes);
+
+      // Ajustar ancho de columnas automáticamente
+      const ajustarColumnas = (ws: XLSX.WorkSheet, datos: Record<string, unknown>[]) => {
+        const cols = Object.keys(datos[0] || {}).map(key => ({
+          wch: Math.max(key.length, ...datos.map(r => String(r[key] || '').length)) + 2
+        }));
+        ws['!cols'] = cols;
+      };
+
+      ajustarColumnas(ws1, datosPersonales);
+      ajustarColumnas(ws2, datosPlanes);
+
+      XLSX.utils.book_append_sheet(wb, ws1, 'Información Personal');
+      XLSX.utils.book_append_sheet(wb, ws2, 'Planes e Inscripciones');
+
+      // Descargar
+      const hoy = new Date();
+      const d = String(hoy.getDate()).padStart(2, '0');
+      const m = String(hoy.getMonth() + 1).padStart(2, '0');
+      const y = hoy.getFullYear();
+      const fecha = `${d}-${m}-${y}`;
+      XLSX.writeFile(wb, `Club_Travesia_${fecha}.xlsx`);
+
+    } catch (err) {
+      console.error('Error exportando:', err);
+      alert('Error al generar el Excel. Intenta de nuevo.');
+    } finally {
+      setExportando(false);
+    }
+  };
 
   useEffect(() => {
     const checkUser = async () => {
@@ -67,14 +240,33 @@ export default function DashboardPage() {
             </h1>
           </div>
 
-          <div className="flex items-center gap-4">
+          <div className="flex flex-wrap items-center gap-4">
+             {/* Botón exportar Excel */}
+             <button
+                onClick={exportarExcel}
+                disabled={exportando}
+                style={{
+                  background: exportando ? '#333' : '#00ff88',
+                  color: '#0a0a0a',
+                  border: '3px solid #00ff88',
+                  boxShadow: '4px 4px 0 #ff2d78',
+                  padding: '12px 24px',
+                  fontFamily: 'Anton',
+                  fontSize: '14px',
+                  letterSpacing: '2px',
+                  cursor: exportando ? 'not-allowed' : 'pointer',
+                }}
+             >
+                {exportando ? 'GENERANDO...' : '📊 EXPORTAR EXCEL COMPLETO'}
+             </button>
+
              <div className="text-right hidden md:block">
                 <p className="font-mono text-[10px] text-white/40 uppercase">Sesión activa</p>
                 <p className="font-mono text-sm text-neon-green font-bold">{user?.email}</p>
              </div>
              <button
                 onClick={handleSignOut}
-                className="btn-tape px-4 py-2 flex items-center gap-2 text-xs"
+                className="btn-tape px-4 py-2 flex items-center gap-2 text-xs h-fit"
              >
                 <LogOut size={14} /> SALIR
              </button>

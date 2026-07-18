@@ -118,3 +118,68 @@ export async function getInscripciones() {
 
   return data || []
 }
+
+export interface ExportInscripcion {
+  estado: 'pendiente' | 'aprobado' | 'rechazado';
+  clases_usadas: number;
+  total_pagado: number;
+  created_at: string;
+  fecha_vencimiento: string | null;
+  anio: number;
+  mes: string;
+  plan: {
+    nombre: string;
+    precio: number;
+    clases_incluidas: number;
+  } | null;
+}
+
+export interface AlumnoWithInscripciones {
+  id: string;
+  numero_alumno: number;
+  nombre: string | null;
+  apellido: string | null;
+  nombre_completo: string;
+  email: string | null;
+  tipo_documento: string | null;
+  numero_documento: string | null;
+  telefono: string | null;
+  fecha_nacimiento: string | null;
+  perfil_completo: boolean;
+  activo: boolean;
+  created_at: string;
+  inscripcion_pagada?: boolean;
+  fecha_pago_inscripcion?: string | null;
+  fecha_vencimiento_seguro?: string | null;
+  observaciones?: string | null;
+  comprobante_inscripcion_url?: string | null;
+  comprobante_inscripcion_pendiente?: boolean;
+  tipo_pago_inscripcion?: 'solo_inscripcion' | 'inscripcion_y_plan' | null;
+  plan_inscripcion_id?: string | null;
+  inscripciones?: ExportInscripcion[];
+}
+
+export async function obtenerDatosExport(): Promise<AlumnoWithInscripciones[]> {
+  await checkAdmin()
+  const supabase = await createServerClient()
+
+  const { data, error } = await supabase
+    .from('alumnos')
+    .select(`
+      *,
+      inscripciones(
+        estado,
+        clases_usadas,
+        total_pagado,
+        created_at,
+        fecha_vencimiento,
+        anio,
+        mes,
+        plan:planes(nombre, precio, clases_incluidas)
+      )
+    `)
+    .order('numero_alumno', { ascending: true })
+
+  if (error) throw new Error(error.message)
+  return (data || []) as AlumnoWithInscripciones[]
+}
