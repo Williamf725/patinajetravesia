@@ -5,6 +5,7 @@ import TvSection from '@/components/sections/TvSection';
 import EsenciaSection from '@/components/sections/EsenciaSection';
 import EntrenamientosSection from '@/components/sections/EntrenamientosSection';
 import UneteSection from '@/components/sections/UneteSection';
+import TiendaPreview from '@/components/sections/TiendaPreview';
 
 export default function Home() {
   return (
@@ -76,6 +77,9 @@ export default function Home() {
       </div>
 
     </div>
+
+    {/* Sección preview tienda */}
+    <TiendaPreview />
 
     {/* Sección seguro */}
     <section className="relative py-12 md:py-16 px-6 max-w-6xl mx-auto w-full z-10">
