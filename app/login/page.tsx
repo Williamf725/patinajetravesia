@@ -1,10 +1,17 @@
 'use client';
 
-import React, { useActionState } from 'react';
+import React, { useActionState, Suspense } from 'react';
 import { useFormStatus } from 'react-dom';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import { loginAction } from '@/app/auth/actions';
+
+function RedirectInput() {
+  const searchParams = useSearchParams();
+  const redirectParam = searchParams.get('redirect') || '/portal';
+  return <input type="hidden" name="redirect" value={redirectParam} />;
+}
 
 function SubmitButton() {
   const { pending } = useFormStatus();
@@ -42,6 +49,10 @@ export default function LoginPage() {
         </div>
 
         <form action={formAction} className="space-y-6">
+          <Suspense fallback={null}>
+            <RedirectInput />
+          </Suspense>
+
           <div className="flex flex-col gap-2">
             <label className="font-mono text-[10px] text-neon-green uppercase tracking-[0.2em] font-bold">Email</label>
             <input

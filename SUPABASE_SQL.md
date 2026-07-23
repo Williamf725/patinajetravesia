@@ -257,3 +257,132 @@ ADD COLUMN IF NOT EXISTS comprobante_inscripcion_pendiente BOOLEAN DEFAULT false
 ADD COLUMN IF NOT EXISTS tipo_pago_inscripcion TEXT CHECK (tipo_pago_inscripcion IN ('solo_inscripcion', 'inscripcion_y_plan')),
 ADD COLUMN IF NOT EXISTS plan_inscripcion_id UUID REFERENCES public.planes(id);
 ```
+
+-- ## 6. Estructura de Tienda y Carrito Persistente
+
+```sql
+CREATE TABLE IF NOT EXISTS public.categorias (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    nombre TEXT NOT NULL,
+    slug TEXT UNIQUE NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.productos (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    nombre TEXT NOT NULL,
+    slug TEXT UNIQUE NOT NULL,
+    descripcion TEXT,
+    precio NUMERIC NOT NULL,
+    precio_descuento NUMERIC,
+    disponible BOOLEAN DEFAULT true,
+    nuevo BOOLEAN DEFAULT false,
+    agotado BOOLEAN DEFAULT false,
+    orden INTEGER DEFAULT 0,
+    categoria_id UUID REFERENCES public.categorias(id) ON DELETE SET NULL,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.producto_fotos (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    producto_id UUID NOT NULL REFERENCES public.productos(id) ON DELETE CASCADE,
+    url TEXT NOT NULL,
+    alt TEXT,
+    orden INTEGER DEFAULT 0,
+    es_principal BOOLEAN DEFAULT false,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.producto_tallas (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    producto_id UUID NOT NULL REFERENCES public.productos(id) ON DELETE CASCADE,
+    talla TEXT NOT NULL,
+    stock INTEGER DEFAULT 0,
+    disponible BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.producto_colores (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    producto_id UUID NOT NULL REFERENCES public.productos(id) ON DELETE CASCADE,
+    nombre TEXT NOT NULL,
+    hex TEXT NOT NULL,
+    disponible BOOLEAN DEFAULT true,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.carrito (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    producto_id UUID NOT NULL REFERENCES public.productos(id) ON DELETE CASCADE,
+    talla TEXT NOT NULL,
+    color TEXT NOT NULL,
+    cantidad INTEGER DEFAULT 1,
+    created_at TIMESTAMPTZ DEFAULT now(),
+    UNIQUE(user_id, producto_id, talla, color)
+);
+
+CREATE TABLE IF NOT EXISTS public.pedidos (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    nombre_alumno TEXT,
+    ciudad TEXT NOT NULL,
+    direccion TEXT NOT NULL,
+    total NUMERIC NOT NULL,
+    estado TEXT DEFAULT 'pendiente',
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE TABLE IF NOT EXISTS public.pedido_items (
+    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    pedido_id UUID NOT NULL REFERENCES public.pedidos(id) ON DELETE CASCADE,
+    producto_id UUID NOT NULL REFERENCES public.productos(id) ON DELETE CASCADE,
+    talla TEXT NOT NULL,
+    color TEXT NOT NULL,
+    cantidad INTEGER NOT NULL,
+    precio NUMERIC NOT NULL,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- Habilitar RLS
+ALTER TABLE public.categorias ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.productos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.producto_fotos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.producto_tallas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.producto_colores ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.carrito ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.pedidos ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.pedido_items ENABLE ROW LEVEL SECURITY;
+
+-- Políticas
+CREATE POLICY "Public read on categorias" ON public.categorias FOR SELECT USING (true);
+CREATE POLICY "Public read on productos" ON public.productos FOR SELECT USING (true);
+CREATE POLICY "Public read on producto_fotos" ON public.producto_fotos FOR SELECT USING (true);
+CREATE POLICY "Public read on producto_tallas" ON public.producto_tallas FOR SELECT USING (true);
+CREATE POLICY "Public read on producto_colores" ON public.producto_colores FOR SELECT USING (true);
+
+CREATE POLICY "Admin full on categorias" ON public.categorias FOR ALL USING (auth.jwt() ->> 'email' = 'clubdepatinajetravesia@gmail.com');
+CREATE POLICY "Admin full on productos" ON public.productos FOR ALL USING (auth.jwt() ->> 'email' = 'clubdepatinajetravesia@gmail.com');
+CREATE POLICY "Admin full on producto_fotos" ON public.producto_fotos FOR ALL USING (auth.jwt() ->> 'email' = 'clubdepatinajetravesia@gmail.com');
+CREATE POLICY "Admin full on producto_tallas" ON public.producto_tallas FOR ALL USING (auth.jwt() ->> 'email' = 'clubdepatinajetravesia@gmail.com');
+CREATE POLICY "Admin full on producto_colores" ON public.producto_colores FOR ALL USING (auth.jwt() ->> 'email' = 'clubdepatinajetravesia@gmail.com');
+CREATE POLICY "Admin full on pedidos" ON public.pedidos FOR ALL USING (auth.jwt() ->> 'email' = 'clubdepatinajetravesia@gmail.com');
+CREATE POLICY "Admin full on pedido_items" ON public.pedido_items FOR ALL USING (auth.jwt() ->> 'email' = 'clubdepatinajetravesia@gmail.com');
+
+CREATE POLICY "Alumnos own carrito" ON public.carrito FOR ALL USING (auth.uid() = user_id);
+CREATE POLICY "Alumnos read own pedidos" ON public.pedidos FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Alumnos insert own pedidos" ON public.pedidos FOR INSERT WITH CHECK (auth.uid() = user_id);
+CREATE POLICY "Alumnos insert own pedido_items" ON public.pedido_items FOR INSERT WITH CHECK (
+    EXISTS (
+        SELECT 1 FROM public.pedidos
+        WHERE id = pedido_id AND user_id = auth.uid()
+    )
+);
+
+-- Seed de Datos Iniciales (Opcional para facilitar la primera carga)
+INSERT INTO public.categorias (id, nombre, slug) VALUES
+('aa3a18a9-da23-42e6-a0bf-52d87e07da23', 'Camisetas', 'camisetas'),
+('bb3a18a9-da23-42e6-a0bf-52d87e07da24', 'Sudaderas', 'sudaderas'),
+('cc3a18a9-da23-42e6-a0bf-52d87e07da25', 'Pantalones', 'pantalones')
+ON CONFLICT DO NOTHING;
+```

@@ -87,3 +87,96 @@ export type Galeria = {
   titulo: string;
   created_at: string;
 };
+
+export type Categoria = {
+  id: string;
+  nombre: string;
+  slug: string;
+  created_at: string;
+};
+
+export type ProductoFoto = {
+  id: string;
+  producto_id: string;
+  url: string;
+  alt: string | null;
+  orden: number;
+  es_principal: boolean;
+  created_at: string;
+};
+
+export type ProductoTalla = {
+  id: string;
+  producto_id: string;
+  talla: string;
+  stock: number;
+  disponible: boolean;
+  created_at: string;
+};
+
+export type ProductoColor = {
+  id: string;
+  producto_id: string;
+  nombre: string;
+  hex: string;
+  disponible: boolean;
+  created_at: string;
+};
+
+export type Producto = {
+  id: string;
+  nombre: string;
+  slug: string;
+  descripcion: string | null;
+  precio: number;
+  precio_descuento: number | null;
+  disponible: boolean;
+  nuevo: boolean;
+  agotado: boolean;
+  orden: number;
+  categoria_id: string | null;
+  created_at: string;
+  // Joins
+  categoria?: Categoria | null;
+  fotos?: ProductoFoto[];
+  tallas?: ProductoTalla[];
+  colores?: ProductoColor[];
+};
+
+export type CarritoItem = {
+  id: string;
+  user_id: string;
+  producto_id: string;
+  talla: string;
+  color: string;
+  cantidad: number;
+  created_at: string;
+  // Joins
+  producto?: Producto;
+};
+
+export type Pedido = {
+  id: string;
+  user_id: string | null;
+  nombre_alumno: string | null;
+  ciudad: string;
+  direccion: string;
+  total: number;
+  estado: string;
+  created_at: string;
+  // Joins
+  items?: PedidoItem[];
+};
+
+export type PedidoItem = {
+  id: string;
+  pedido_id: string;
+  producto_id: string;
+  talla: string;
+  color: string;
+  cantidad: number;
+  precio: number;
+  created_at: string;
+  // Joins
+  producto?: Producto;
+};
