@@ -89,9 +89,9 @@ export default function Navbar() {
           <a href="#entrenamientos" className="nav-link text-xs tracking-widest uppercase">Entrenamientos</a>
           <a href="#galeria" className="nav-link text-xs tracking-widest uppercase">Galería</a>
           {/* Enlace tienda navbar */}
-          <a href="/tienda" style={{ color: '#fff', letterSpacing: '3px', fontFamily: 'Anton', fontSize: '14px', textDecoration: 'none' }}>
+          <Link href="/tienda" style={{ color: '#fff', letterSpacing: '3px', fontFamily: 'Anton', fontSize: '14px', textDecoration: 'none' }}>
             TIENDA
-          </a>
+          </Link>
           <a href="#unete" className="nav-link text-xs tracking-widest uppercase">Únete</a>
         </div>
 
