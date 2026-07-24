@@ -280,7 +280,7 @@ export default function InscripcionesTab() {
       </div>
 
       {/* Table */}
-      <div className="bg-[#1a1a1a] border-4 border-white shadow-brutal overflow-x-auto">
+      <div className="tabla-admin bg-[#1a1a1a] border-4 border-white shadow-brutal overflow-x-auto">
         <table className="w-full font-mono text-[10px] uppercase tracking-tighter text-left">
           <thead>
             <tr className="bg-black border-b-4 border-white">
@@ -400,7 +400,7 @@ export default function InscripcionesTab() {
         </div>
       </div>
 
-      <div className="bg-[#1a1a1a] border-4 border-white shadow-brutal overflow-x-auto">
+      <div className="tabla-admin bg-[#1a1a1a] border-4 border-white shadow-brutal overflow-x-auto">
         <table className="w-full font-mono text-[10px] uppercase tracking-tighter text-left">
           <thead>
             <tr className="bg-black border-b-4 border-white">

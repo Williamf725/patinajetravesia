@@ -233,7 +233,7 @@ export default function AsistenciaTab() {
       </div>
 
       {/* Spreadsheet Table */}
-      <div className="overflow-x-auto max-h-[700px] border-4 border-white shadow-brutal">
+      <div className="tabla-admin overflow-x-auto max-h-[700px] border-4 border-white shadow-brutal">
         <table className="w-full border-collapse font-mono text-[10px]">
           <thead className="sticky top-0 z-20 bg-black">
             <tr className="border-b-2 border-white">

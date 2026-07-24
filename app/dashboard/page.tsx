@@ -8,14 +8,15 @@ import AsistenciaTab from '@/components/dashboard/AsistenciaTab';
 import PagosTab from '@/components/dashboard/PagosTab';
 import GaleriaTab from '@/components/dashboard/GaleriaTab';
 import InscripcionesTab from '@/components/dashboard/InscripcionesTab';
-import { Users, CreditCard, Image as ImageIcon, LogOut, ClipboardList } from 'lucide-react';
+import TiendaTab from '@/components/dashboard/TiendaTab';
+import { Users, CreditCard, Image as ImageIcon, LogOut, ClipboardList, ShoppingBag } from 'lucide-react';
 import { User } from '@supabase/supabase-js';
 import * as XLSX from 'xlsx';
 import { obtenerDatosExport } from '@/app/auth/actions/admin';
 
 const ADMIN_EMAIL = 'clubdepatinajetravesia@gmail.com';
 
-type Tab = 'asistencia' | 'pagos' | 'galeria' | 'inscripciones';
+type Tab = 'asistencia' | 'pagos' | 'galeria' | 'inscripciones' | 'tienda';
 
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<Tab>('inscripciones');
@@ -283,6 +284,7 @@ export default function DashboardPage() {
               { id: 'asistencia', label: 'Asistencia', icon: Users },
               { id: 'pagos', label: 'Planilla Pagos', icon: CreditCard },
               { id: 'galeria', label: 'Galería Media', icon: ImageIcon },
+              { id: 'tienda', label: 'Tienda', icon: ShoppingBag },
             ].map((tab) => (
               <button
                 key={tab.id}
@@ -314,6 +316,7 @@ export default function DashboardPage() {
                 {activeTab === 'asistencia' && <AsistenciaTab />}
                 {activeTab === 'pagos' && <PagosTab />}
                 {activeTab === 'galeria' && <GaleriaTab />}
+                {activeTab === 'tienda' && <TiendaTab />}
               </motion.div>
             </AnimatePresence>
           </main>

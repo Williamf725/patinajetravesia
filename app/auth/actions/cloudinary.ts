@@ -100,6 +100,32 @@ export async function saveToSupabase(data: {
   revalidatePath('/dashboard')
 }
 
+export async function getSignaturaProducto(slug: string) {
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user || user.email !== ADMIN_EMAIL) {
+    throw new Error('No autorizado')
+  }
+
+  const timestamp = Math.round(Date.now() / 1000)
+  const folder = `productos/${slug}`
+  const paramsToSign = { timestamp, folder }
+
+  const signature = cloudinary.utils.api_sign_request(
+    paramsToSign,
+    process.env.CLOUDINARY_API_SECRET!
+  )
+
+  return {
+    signature,
+    timestamp,
+    apiKey: process.env.CLOUDINARY_API_KEY!,
+    cloudName: process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME!,
+    folder
+  }
+}
+
 export async function deleteFromCloudinary(publicId: string, id: string) {
   const supabase = await createServerClient()
   const { data: { user } } = await supabase.auth.getUser()
