@@ -233,7 +233,7 @@ export default function AsistenciaTab() {
       </div>
 
       {/* Spreadsheet Table */}
-      <div className="overflow-x-auto max-h-[700px] border-4 border-white shadow-brutal">
+      <div className="tabla-admin overflow-x-auto max-h-[700px] border-4 border-white shadow-brutal">
         <table className="w-full border-collapse font-mono text-[10px]">
           <thead className="sticky top-0 z-20 bg-black">
             <tr className="border-b-2 border-white">
@@ -348,6 +348,21 @@ export default function AsistenciaTab() {
                         { label: 'Nº documento', valor: alumnoModal.numero_documento || 'No registrado' },
                         { label: 'Perfil', valor: alumnoModal.perfil_completo ? '✅ Completo' : '⚠️ Incompleto' },
                         { label: 'Estado', valor: alumnoModal.activo ? '✅ Activo' : '❌ Inactivo' },
+                        { label: 'Inscripción pagada', valor: alumnoModal.inscripcion_pagada ? '✅ Sí' : '❌ Pendiente' },
+                        { label: 'Vencimiento seguro', valor: (() => {
+                            if (!alumnoModal.fecha_vencimiento_seguro) return 'No registrado';
+                            try {
+                              const date = new Date(alumnoModal.fecha_vencimiento_seguro + 'T00:00:00');
+                              const months = [
+                                'enero', 'febrero', 'marzo', 'abril', 'mayo', 'junio',
+                                'julio', 'agosto', 'septiembre', 'octubre', 'noviembre', 'diciembre'
+                              ];
+                              return `${date.getDate()} de ${months[date.getMonth()]} de ${date.getFullYear()}`;
+                            } catch {
+                              return alumnoModal.fecha_vencimiento_seguro;
+                            }
+                          })()
+                        },
                     ].map(({ label, valor }) => (
                         <div key={label} className="flex gap-3 border-b border-[#222] pb-2 items-center">
                             <span className="text-[#666] text-[10px] tracking-[2px] min-w-[140px] uppercase font-mono">{label}</span>

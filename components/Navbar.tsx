@@ -16,6 +16,8 @@ export default function Navbar() {
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [menuAbierto, setMenuAbierto] = useState(false);
+  const [cantidadCarrito, setCantidadCarrito] = useState(0);
 
   const supabase = createClient();
 
@@ -35,6 +37,38 @@ export default function Navbar() {
 
     return () => subscription.unsubscribe();
   }, [supabase]);
+
+  // Fetch and subscribe to shopping cart items to keep count synchronized
+  useEffect(() => {
+    if (!user) {
+      setCantidadCarrito(0);
+      return;
+    }
+
+    const fetchCartCount = async () => {
+      const { data, error } = await supabase
+        .from('carrito')
+        .select('cantidad')
+        .eq('user_id', user.id);
+      if (!error && data) {
+        const totalQty = data.reduce((acc, curr) => acc + curr.cantidad, 0);
+        setCantidadCarrito(totalQty);
+      }
+    };
+
+    fetchCartCount();
+
+    const channel = supabase
+      .channel('navbar-cart-changes')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'carrito' }, () => {
+        fetchCartCount();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [user, supabase]);
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,71 +108,219 @@ export default function Navbar() {
 
   return (
     <>
-      <motion.nav
-        initial={{ y: -100 }}
-        animate={{ y: 0 }}
-        transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
-        className="fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4 md:px-12 md:py-8"
-      >
-        <Link href="/" className="font-anton text-2xl md:text-3xl text-white tracking-tighter hover:text-neon-green transition-colors duration-300">
-          TRAVESÍA<span className="text-neon-green">.</span>
+      {/* Navbar mobile-first */}
+      <nav style={{
+        position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
+        background: 'rgba(0,0,0,0.95)', backdropFilter: 'blur(10px)',
+        height: '60px', display: 'flex', alignItems: 'center',
+        justifyContent: 'space-between', padding: '0 16px',
+        borderBottom: '1px solid #222'
+      }}>
+        {/* Logo */}
+        <Link href="/">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src="https://res.cloudinary.com/dvpnkr2i9/image/upload/v1784734270/40930-removebg-preview_bmvhkt.png"
+            style={{ height: '36px', width: 'auto' }} alt="Travesía" />
         </Link>
 
-        <div className="hidden lg:flex items-center gap-8">
-          <a href="#historia" className="nav-link text-xs tracking-widest uppercase">La Historia</a>
-          <a href="#entrenamientos" className="nav-link text-xs tracking-widest uppercase">Entrenamientos</a>
-          <a href="#galeria" className="nav-link text-xs tracking-widest uppercase">Galería</a>
-          <a href="#unete" className="nav-link text-xs tracking-widest uppercase">Únete</a>
+        {/* Desktop links — ocultos en móvil */}
+        <div className="desktop-nav" style={{ gap: '32px' }}>
+          {['#historia', '#entrenamientos', '#galeria', '/tienda', '#unete'].map((href, i) => (
+            <Link key={href} href={href}
+              style={{ color: '#fff', fontFamily: 'Anton', fontSize: '13px',
+              letterSpacing: '2px', textDecoration: 'none' }}
+              className="hover:text-neon-green transition-colors"
+            >
+              {['HISTORIA','ENTRENAMIENTOS','GALERÍA','TIENDA','ÚNETE'][i]}
+            </Link>
+          ))}
         </div>
 
-        <div className="flex items-center gap-4 md:gap-8">
-          {!loading && (
-            <>
-              {user ? (
-                <div className="flex items-center gap-3">
-                  {!isAdmin && (
+        {/* Derecha: carrito + menú */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
+          {/* Ícono carrito - siempre visible */}
+          <Link href="/tienda" style={{ position: 'relative', color: '#fff' }} className="hover:text-neon-green transition-colors">
+            {/* Ícono carrito SVG */}
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
+              <line x1="3" y1="6" x2="21" y2="6"/>
+              <path d="M16 10a4 4 0 01-8 0"/>
+            </svg>
+            {/* Contador carrito */}
+            {cantidadCarrito > 0 && (
+              <span style={{
+                position: 'absolute', top: '-8px', right: '-8px',
+                background: '#00ff88', color: '#000', borderRadius: '50%',
+                width: '18px', height: '18px', fontSize: '11px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                fontWeight: 'bold'
+              }}>
+                {cantidadCarrito}
+              </span>
+            )}
+          </Link>
+
+          {/* Botón sesión — visible en desktop */}
+          <div className="desktop-auth" style={{ gap: '12px' }}>
+            {!loading && (
+              <>
+                {user ? (
+                  <div className="flex items-center gap-3">
+                    {!isAdmin && (
+                      <Link
+                        href="/portal"
+                        className="btn-tape text-[10px] md:text-xs tracking-widest px-4 py-2"
+                      >
+                        MI PORTAL
+                      </Link>
+                    )}
+                    {isAdmin ? (
+                      <Link
+                        href="/dashboard"
+                        className="nav-link text-[10px] md:text-xs tracking-widest uppercase border border-white/20 px-4 py-2 hover:bg-white hover:text-black transition-all"
+                        style={{ color: '#fff', textDecoration: 'none' }}
+                      >
+                        PANEL CONTROL
+                      </Link>
+                    ) : null}
+                    <button
+                      onClick={() => supabase.auth.signOut()}
+                      className="nav-link text-[10px] md:text-xs tracking-widest uppercase border border-white/20 px-4 py-2 hover:opacity-70 transition-opacity"
+                    >
+                      CERRAR SESIÓN
+                    </button>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-3">
                     <Link
-                      href="/portal"
+                      href="/registro"
                       className="btn-tape text-[10px] md:text-xs tracking-widest px-4 py-2"
                     >
-                      MI PORTAL
+                      UNIRSE
                     </Link>
-                  )}
-                  {isAdmin ? (
-                    <Link
-                      href="/dashboard"
+                    <button
+                      onClick={() => setIsModalOpen(true)}
                       className="nav-link text-[10px] md:text-xs tracking-widest uppercase border border-white/20 px-4 py-2 hover:bg-white hover:text-black transition-all"
                     >
-                      PANEL CONTROL
-                    </Link>
-                  ) : null}
-                  <button
-                    onClick={() => supabase.auth.signOut()}
-                    className="nav-link text-[10px] md:text-xs tracking-widest uppercase border border-white/20 px-4 py-2 hover:opacity-70 transition-opacity"
-                  >
-                    CERRAR SESIÓN
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-3">
-                  <Link
-                    href="/registro"
-                    className="btn-tape text-[10px] md:text-xs tracking-widest px-4 py-2"
-                  >
-                    UNIRSE
-                  </Link>
-                  <button
-                    onClick={() => setIsModalOpen(true)}
-                    className="nav-link text-[10px] md:text-xs tracking-widest uppercase border border-white/20 px-4 py-2 hover:bg-white hover:text-black transition-all"
-                  >
-                    ADMIN
-                  </button>
-                </div>
-              )}
-            </>
-          )}
+                      ADMIN
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+
+          {/* Hamburguesa — solo móvil */}
+          <button
+            onClick={() => setMenuAbierto(!menuAbierto)}
+            className="mobile-menu-btn"
+            style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}
+          >
+            {menuAbierto ? (
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+              </svg>
+            ) : (
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+                <line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/>
+              </svg>
+            )}
+          </button>
         </div>
-      </motion.nav>
+      </nav>
+
+      {/* Menú móvil desplegable */}
+      <AnimatePresence>
+        {menuAbierto && (
+          <motion.div
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.2 }}
+            style={{
+              position: 'fixed', top: '60px', left: 0, right: 0, bottom: 0,
+              background: 'rgba(0,0,0,0.97)', zIndex: 99,
+              display: 'flex', flexDirection: 'column', padding: '32px 24px', gap: '24px',
+              overflowY: 'auto'
+            }}
+          >
+            {[
+              { href: '#historia', label: 'HISTORIA' },
+              { href: '#entrenamientos', label: 'ENTRENAMIENTOS' },
+              { href: '#galeria', label: 'GALERÍA' },
+              { href: '/tienda', label: 'TIENDA' },
+              { href: '#unete', label: 'ÚNETE' },
+            ].map(({ href, label }) => (
+              <Link key={href} href={href}
+                onClick={() => setMenuAbierto(false)}
+                style={{ color: '#fff', fontFamily: 'Anton', fontSize: '28px',
+                letterSpacing: '2px', textDecoration: 'none', borderBottom: '1px solid #222',
+                paddingBottom: '24px' }}>
+                {label}
+              </Link>
+            ))}
+
+            {/* Botón sesión dentro del menú móvil */}
+            <div style={{ marginTop: 'auto', paddingTop: '24px' }}>
+              {!loading && (
+                <>
+                  {user ? (
+                    <div className="flex flex-col gap-4">
+                      <div className="font-mono text-xs text-white/40 uppercase">Sesión activa: <span className="text-neon-green font-bold">{user.email}</span></div>
+                      {!isAdmin && (
+                        <Link
+                          href="/portal"
+                          onClick={() => setMenuAbierto(false)}
+                          className="btn-tape w-full py-4 text-center font-anton text-xl tracking-widest"
+                        >
+                          MI PORTAL
+                        </Link>
+                      )}
+                      {isAdmin && (
+                        <Link
+                          href="/dashboard"
+                          onClick={() => setMenuAbierto(false)}
+                          className="btn-tape w-full py-4 text-center font-anton text-xl tracking-widest"
+                        >
+                          PANEL CONTROL
+                        </Link>
+                      )}
+                      <button
+                        onClick={() => {
+                          setMenuAbierto(false);
+                          supabase.auth.signOut();
+                        }}
+                        className="w-full py-4 text-center font-anton text-xl tracking-widest border border-white/20 hover:bg-white hover:text-black transition-all"
+                      >
+                        CERRAR SESIÓN
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-col gap-4">
+                      <Link
+                        href="/registro"
+                        onClick={() => setMenuAbierto(false)}
+                        className="btn-tape w-full py-4 text-center font-anton text-xl tracking-widest"
+                      >
+                        UNIRSE AL CLUB
+                      </Link>
+                      <button
+                        onClick={() => {
+                          setMenuAbierto(false);
+                          setIsModalOpen(true);
+                        }}
+                        className="w-full py-4 text-center font-anton text-xl tracking-widest border border-white/20 hover:bg-white hover:text-black transition-all"
+                      >
+                        ACCESO ADMIN
+                      </button>
+                    </div>
+                  )}
+                </>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Login Modal */}
       <AnimatePresence>

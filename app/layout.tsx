@@ -27,8 +27,9 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: 'Club de Patinaje Travesía | El Arte de Rodar',
-  description: 'Club de patinaje para adultos en Sogamoso, Boyacá.',
+  title: 'Travesía | Club de Patinaje y Tienda de Ropa Deportiva Colombia',
+  description: 'Club de patinaje para adultos en Sogamoso + tienda online de ropa deportiva para patinaje. Camisetas, sudaderas y pantalones con envío a toda Colombia.',
+  keywords: ['patinaje Colombia', 'ropa patinaje', 'club patinaje adultos', 'patinaje Sogamoso', 'ropa deportiva patinaje', 'sudaderas patinaje', 'camisetas patinaje Colombia'],
   icons: {
     icon: [
       { url: '/icon.png', sizes: '32x32', type: 'image/png' },
@@ -40,6 +41,21 @@ export const metadata: Metadata = {
     shortcut: '/favicon.ico',
   },
   manifest: '/manifest.json',
+  openGraph: {
+    title: 'Travesía | Club de Patinaje y Tienda Colombia',
+    description: 'Club de patinaje para adultos + tienda de ropa deportiva de patinaje en Colombia.',
+    url: 'https://patinajetravesia.vercel.app',
+    siteName: 'Travesía',
+    images: [{ url: 'https://res.cloudinary.com/dvpnkr2i9/image/upload/v1784734270/40930-removebg-preview_bmvhkt.png', width: 800, height: 800 }],
+    locale: 'es_CO',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Travesía | Club de Patinaje y Tienda Colombia',
+    description: 'Club de patinaje para adultos + tienda de ropa deportiva de patinaje en Colombia.',
+    images: ['https://res.cloudinary.com/dvpnkr2i9/image/upload/v1784734270/40930-removebg-preview_bmvhkt.png'],
+  },
 };
 
 export default function RootLayout({

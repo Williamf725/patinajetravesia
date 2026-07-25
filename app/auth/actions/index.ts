@@ -9,6 +9,7 @@ import { enviarBienvenida } from '@/lib/email/resend'
 export async function loginAction(_prevState: unknown, formData: FormData) {
   const email = formData.get('email') as string
   const password = formData.get('password') as string
+  const redirectTo = (formData.get('redirect') as string) || '/portal'
 
   if (!email || !password) {
     return { error: 'Completa todos los campos' }
@@ -63,7 +64,7 @@ export async function loginAction(_prevState: unknown, formData: FormData) {
     return redirect('/dashboard')
   }
 
-  return redirect('/portal')
+  return redirect(redirectTo)
 }
 
 export async function registrarAlumno(_prevState: unknown, formData: FormData) {

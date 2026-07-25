@@ -273,7 +273,7 @@ export default function PagosTab() {
       </div>
 
       {/* Spreadsheet Table */}
-      <div className="bg-[#1a1a1a] border-4 border-white shadow-brutal overflow-x-auto">
+      <div className="tabla-admin bg-[#1a1a1a] border-4 border-white shadow-brutal overflow-x-auto">
         <table className="w-full border-collapse font-mono text-[10px] uppercase">
           <thead>
             <tr className="bg-black border-b-4 border-white text-white/60">

@@ -3,14 +3,30 @@ import { NextResponse, type NextRequest } from 'next/server'
 
 const ADMIN_EMAIL = 'clubdepatinajetravesia@gmail.com'
 
+const getSupabaseUrl = () => {
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (url && (url.startsWith('http://') || url.startsWith('https://'))) {
+    return url;
+  }
+  return 'https://placeholder.supabase.co';
+};
+
+const getSupabaseAnonKey = () => {
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (key && key !== 'your-anon-key' && key.trim() !== '') {
+    return key;
+  }
+  return 'placeholder';
+};
+
 export async function updateSession(request: NextRequest) {
   let supabaseResponse = NextResponse.next({
     request,
   })
 
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    getSupabaseUrl(),
+    getSupabaseAnonKey(),
     {
       cookies: {
         getAll() {
