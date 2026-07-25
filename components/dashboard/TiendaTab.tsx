@@ -4,6 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Categoria, Producto, ProductoFoto, Pedido } from '@/types/database';
 import { getSignaturaProducto } from '@/app/auth/actions/cloudinary';
+import { crearProducto } from '@/app/auth/actions/admin';
 import { toast } from 'sonner';
 import { ShoppingBag, CreditCard, Plus, Edit2, Trash2, Image as ImageIcon, Layers, Palette, Eye, ArrowLeft, ArrowRight, Star, Check } from 'lucide-react';
 
@@ -160,24 +161,25 @@ export default function TiendaTab() {
   // Save Product (insert/update)
   const handleSaveProduct = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nombre || !slug || !precio) {
+    if (!nombre || !precio) {
       toast.error('Completa los campos obligatorios');
       return;
     }
 
     try {
-      const payload = {
-        nombre,
-        slug,
-        descripcion: descripcionCompleta || descripcionCorta,
-        precio,
-        precio_descuento: precioDescuento || null,
-        categoria_id: selectedCategoriaId || null,
-        disponible,
-        nuevo: destacado,
-      };
-
       if (editingProduct) {
+        const payload = {
+          nombre,
+          slug,
+          descripcion_corta: descripcionCorta || null,
+          descripcion: descripcionCompleta || null,
+          precio,
+          precio_descuento: precioDescuento || null,
+          categoria_id: selectedCategoriaId || null,
+          disponible,
+          nuevo: destacado,
+          genero: genero.toLowerCase()
+        };
         const { error } = await supabase
           .from('productos')
           .update(payload)
@@ -185,17 +187,30 @@ export default function TiendaTab() {
 
         if (error) throw error;
         toast.success('Producto actualizado con éxito');
+        setIsProductModalOpen(false);
+        loadData();
       } else {
-        const { error } = await supabase
-          .from('productos')
-          .insert(payload);
+        // Use server action for creation as requested
+        const formData = new FormData();
+        formData.append('nombre', nombre);
+        formData.append('descripcionCorta', descripcionCorta);
+        formData.append('descripcion', descripcionCompleta);
+        formData.append('precio', precio.toString());
+        formData.append('precioDescuento', precioDescuento ? precioDescuento.toString() : '');
+        formData.append('categoriaId', selectedCategoriaId);
+        formData.append('genero', genero.toLowerCase());
+        formData.append('disponible', disponible.toString());
+        formData.append('destacado', destacado.toString());
 
-        if (error) throw error;
-        toast.success('Producto creado con éxito');
+        const resultado = await crearProducto(formData);
+        if (resultado.error) {
+          toast.error(resultado.error);
+        } else {
+          setIsProductModalOpen(false);
+          toast.success('✅ Producto creado correctamente');
+          loadData();
+        }
       }
-
-      setIsProductModalOpen(false);
-      loadData();
     } catch (err) {
       console.error(err);
       toast.error('Error al guardar el producto');
@@ -834,11 +849,45 @@ export default function TiendaTab() {
 
       {/* product save details modal */}
       {isProductModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
-          <div className="relative w-full max-w-xl bg-black border border-white/20 p-8 text-left max-h-[90vh] overflow-y-auto">
+        <div
+          onClick={() => setIsProductModalOpen(false)}
+          style={{
+            position: 'fixed', inset: 0,
+            background: 'rgba(0,0,0,0.7)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 200,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '16px',
+            overflowY: 'auto',
+          }}
+        >
+          {/* Contenido del modal — detiene propagación del click */}
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: '#111',
+              border: '2px solid #333',
+              borderRadius: '16px',
+              padding: '24px',
+              width: '100%',
+              maxWidth: '540px',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              position: 'relative',
+              margin: 'auto',
+            }}
+          >
+            {/* Botón X para cerrar */}
             <button
               onClick={() => setIsProductModalOpen(false)}
-              className="absolute top-4 right-4 text-white/40 hover:text-white font-mono text-xl"
+              style={{
+                position: 'sticky', top: 0, float: 'right',
+                background: 'rgba(255,255,255,0.1)', border: 'none',
+                color: '#fff', width: '32px', height: '32px',
+                borderRadius: '50%', cursor: 'pointer', fontSize: '18px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                zIndex: 10
+              }}
             >
               ✕
             </button>
@@ -847,7 +896,7 @@ export default function TiendaTab() {
               {editingProduct ? 'EDITAR PRODUCTO' : 'NUEVO PRODUCTO'}
             </h3>
 
-            <form onSubmit={handleSaveProduct} className="space-y-4">
+            <form onSubmit={handleSaveProduct} className="space-y-4 clear-both">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="flex flex-col gap-1.5">
                   <label className="text-[10px] text-white/40 uppercase">Nombre del Producto</label>

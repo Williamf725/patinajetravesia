@@ -273,11 +273,14 @@ CREATE TABLE IF NOT EXISTS public.productos (
     nombre TEXT NOT NULL,
     slug TEXT UNIQUE NOT NULL,
     descripcion TEXT,
+    descripcion_corta TEXT,
     precio NUMERIC NOT NULL,
     precio_descuento NUMERIC,
     disponible BOOLEAN DEFAULT true,
     nuevo BOOLEAN DEFAULT false,
+    destacado BOOLEAN DEFAULT false,
     agotado BOOLEAN DEFAULT false,
+    genero TEXT DEFAULT 'unisex',
     orden INTEGER DEFAULT 0,
     categoria_id UUID REFERENCES public.categorias(id) ON DELETE SET NULL,
     created_at TIMESTAMPTZ DEFAULT now()
@@ -385,4 +388,10 @@ INSERT INTO public.categorias (id, nombre, slug) VALUES
 ('bb3a18a9-da23-42e6-a0bf-52d87e07da24', 'Sudaderas', 'sudaderas'),
 ('cc3a18a9-da23-42e6-a0bf-52d87e07da25', 'Pantalones', 'pantalones')
 ON CONFLICT DO NOTHING;
+
+-- Modificaciones a productos existentes
+ALTER TABLE public.productos
+ADD COLUMN IF NOT EXISTS descripcion_corta TEXT,
+ADD COLUMN IF NOT EXISTS destacado BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS genero TEXT DEFAULT 'unisex';
 ```

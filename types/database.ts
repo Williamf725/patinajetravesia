@@ -128,11 +128,14 @@ export type Producto = {
   nombre: string;
   slug: string;
   descripcion: string | null;
+  descripcion_corta?: string | null;
   precio: number;
   precio_descuento: number | null;
   disponible: boolean;
   nuevo: boolean;
+  destacado?: boolean;
   agotado: boolean;
+  genero?: string;
   orden: number;
   categoria_id: string | null;
   created_at: string;

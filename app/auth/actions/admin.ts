@@ -183,3 +183,47 @@ export async function obtenerDatosExport(): Promise<AlumnoWithInscripciones[]> {
   if (error) throw new Error(error.message)
   return (data || []) as AlumnoWithInscripciones[]
 }
+
+export async function crearProducto(formData: FormData) {
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user || user.email !== 'clubdepatinajetravesia@gmail.com') {
+    return { error: 'No autorizado' }
+  }
+
+  const nombre = formData.get('nombre') as string
+  const slug = nombre.toLowerCase()
+    .normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '')
+
+  const { data, error } = await supabase
+    .from('productos')
+    .insert({
+      nombre,
+      slug,
+      descripcion_corta: formData.get('descripcionCorta') as string || null,
+      descripcion: formData.get('descripcion') as string || null,
+      precio: Number(formData.get('precio')) || 0,
+      precio_descuento: formData.get('precioDescuento')
+        ? Number(formData.get('precioDescuento'))
+        : null,
+      categoria_id: formData.get('categoriaId') as string || null,
+      genero: formData.get('genero') as string || 'unisex',
+      disponible: formData.get('disponible') === 'true',
+      destacado: formData.get('destacado') === 'true',
+      orden: 0,
+    })
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error creando producto:', error.code, error.message)
+    return { error: error.message }
+  }
+
+  revalidatePath('/dashboard')
+  revalidatePath('/tienda')
+  return { success: true, producto: data }
+}
