@@ -106,24 +106,41 @@ export default function Navbar() {
 
   const isAdmin = user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
 
+  const glassmorphismStyle = {
+    background: 'rgba(0,0,0,0.3)',
+    backdropFilter: 'blur(12px)',
+    WebkitBackdropFilter: 'blur(12px)',
+    border: '1px solid rgba(255,255,255,0.1)',
+    borderRadius: '8px',
+    padding: '8px 16px',
+    color: '#fff',
+    fontSize: '11px',
+    letterSpacing: '1.5px',
+    fontFamily: 'Anton',
+    textDecoration: 'none',
+    transition: 'all 0.2s',
+    display: 'inline-flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+  };
+
   return (
     <>
-      {/* Navbar mobile-first */}
+      {/* Navbar flotante transparente */}
       <nav style={{
         position: 'fixed', top: 0, left: 0, right: 0, zIndex: 100,
-        background: 'rgba(0,0,0,0.95)', backdropFilter: 'blur(10px)',
+        background: 'transparent',
         height: '60px', display: 'flex', alignItems: 'center',
-        justifyContent: 'space-between', padding: '0 16px',
-        borderBottom: '1px solid #222'
+        justifyContent: 'space-between', padding: '0 20px',
       }}>
-        {/* Logo */}
-        <Link href="/">
+        {/* Logo — completamente transparente */}
+        <Link href="/" style={{ background: 'transparent' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src="https://res.cloudinary.com/dvpnkr2i9/image/upload/v1784734270/40930-removebg-preview_bmvhkt.png"
             style={{ height: '36px', width: 'auto' }} alt="Travesía" />
         </Link>
 
-        {/* Desktop links — ocultos en móvil */}
+        {/* Desktop links — flotantes sin fondo */}
         <div className="desktop-nav" style={{ gap: '32px' }}>
           {['#historia', '#entrenamientos', '#galeria', '/tienda', '#unete'].map((href, i) => (
             <Link key={href} href={href}
@@ -138,10 +155,10 @@ export default function Navbar() {
 
         {/* Derecha: carrito + menú */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          {/* Ícono carrito - siempre visible */}
-          <Link href="/tienda" style={{ position: 'relative', color: '#fff' }} className="hover:text-neon-green transition-colors">
+          {/* Ícono carrito con glassmorphism */}
+          <Link href="/tienda" style={{ ...glassmorphismStyle, position: 'relative', width: 'auto', height: 'auto' }} className="hover:text-neon-green hover:border-neon-green/30 transition-colors">
             {/* Ícono carrito SVG */}
-            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+            <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
               <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
               <line x1="3" y1="6" x2="21" y2="6"/>
               <path d="M16 10a4 4 0 01-8 0"/>
@@ -149,9 +166,9 @@ export default function Navbar() {
             {/* Contador carrito */}
             {cantidadCarrito > 0 && (
               <span style={{
-                position: 'absolute', top: '-8px', right: '-8px',
+                position: 'absolute', top: '-6px', right: '-6px',
                 background: '#00ff88', color: '#000', borderRadius: '50%',
-                width: '18px', height: '18px', fontSize: '11px',
+                width: '16px', height: '16px', fontSize: '10px',
                 display: 'flex', alignItems: 'center', justifyContent: 'center',
                 fontWeight: 'bold'
               }}>
@@ -160,8 +177,8 @@ export default function Navbar() {
             )}
           </Link>
 
-          {/* Botón sesión — visible en desktop */}
-          <div className="desktop-auth" style={{ gap: '12px' }}>
+          {/* Botón sesión con glassmorphism — visible en desktop */}
+          <div className="desktop-auth" style={{ display: 'flex', gap: '12px' }}>
             {!loading && (
               <>
                 {user ? (
@@ -169,7 +186,8 @@ export default function Navbar() {
                     {!isAdmin && (
                       <Link
                         href="/portal"
-                        className="btn-tape text-[10px] md:text-xs tracking-widest px-4 py-2"
+                        style={glassmorphismStyle}
+                        className="hover:text-neon-green hover:border-neon-green/30 transition-colors"
                       >
                         MI PORTAL
                       </Link>
@@ -177,15 +195,16 @@ export default function Navbar() {
                     {isAdmin ? (
                       <Link
                         href="/dashboard"
-                        className="nav-link text-[10px] md:text-xs tracking-widest uppercase border border-white/20 px-4 py-2 hover:bg-white hover:text-black transition-all"
-                        style={{ color: '#fff', textDecoration: 'none' }}
+                        style={glassmorphismStyle}
+                        className="hover:text-neon-green hover:border-neon-green/30 transition-colors"
                       >
                         PANEL CONTROL
                       </Link>
                     ) : null}
                     <button
                       onClick={() => supabase.auth.signOut()}
-                      className="nav-link text-[10px] md:text-xs tracking-widest uppercase border border-white/20 px-4 py-2 hover:opacity-70 transition-opacity"
+                      style={{ ...glassmorphismStyle, cursor: 'pointer' }}
+                      className="hover:text-hot-pink hover:border-hot-pink/30 transition-colors"
                     >
                       CERRAR SESIÓN
                     </button>
@@ -194,13 +213,15 @@ export default function Navbar() {
                   <div className="flex items-center gap-3">
                     <Link
                       href="/registro"
-                      className="btn-tape text-[10px] md:text-xs tracking-widest px-4 py-2"
+                      style={glassmorphismStyle}
+                      className="hover:text-neon-green hover:border-neon-green/30 transition-colors"
                     >
-                      UNIRSE
+                      ÚNETE
                     </Link>
                     <button
                       onClick={() => setIsModalOpen(true)}
-                      className="nav-link text-[10px] md:text-xs tracking-widest uppercase border border-white/20 px-4 py-2 hover:bg-white hover:text-black transition-all"
+                      style={{ ...glassmorphismStyle, cursor: 'pointer' }}
+                      className="hover:text-neon-green hover:border-neon-green/30 transition-colors"
                     >
                       ADMIN
                     </button>
@@ -210,18 +231,18 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* Hamburguesa — solo móvil */}
+          {/* Hamburguesa con glassmorphism — solo móvil */}
           <button
             onClick={() => setMenuAbierto(!menuAbierto)}
             className="mobile-menu-btn"
-            style={{ background: 'none', border: 'none', color: '#fff', cursor: 'pointer' }}
+            style={{ ...glassmorphismStyle, cursor: 'pointer', padding: '8px 12px' }}
           >
             {menuAbierto ? (
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
               </svg>
             ) : (
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
                 <line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/>
               </svg>
             )}
@@ -229,19 +250,29 @@ export default function Navbar() {
         </div>
       </nav>
 
-      {/* Menú móvil desplegable */}
+      {/* Menú móvil desplegable — glassmorphism pequeño y compacto */}
       <AnimatePresence>
         {menuAbierto && (
           <motion.div
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
-            transition={{ duration: 0.2 }}
+            initial={{ opacity: 0, scale: 0.95, y: -10 }}
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            exit={{ opacity: 0, scale: 0.95, y: -10 }}
+            transition={{ duration: 0.15 }}
             style={{
-              position: 'fixed', top: '60px', left: 0, right: 0, bottom: 0,
-              background: 'rgba(0,0,0,0.97)', zIndex: 99,
-              display: 'flex', flexDirection: 'column', padding: '32px 24px', gap: '24px',
-              overflowY: 'auto'
+              position: 'fixed',
+              top: '68px',
+              right: '16px',
+              width: '220px',
+              background: 'rgba(0,0,0,0.55)',
+              backdropFilter: 'blur(20px)',
+              WebkitBackdropFilter: 'blur(20px)',
+              border: '1px solid rgba(255,255,255,0.12)',
+              borderRadius: '16px',
+              padding: '12px',
+              zIndex: 99,
+              display: 'flex',
+              flexDirection: 'column',
+              gap: '4px',
             }}
           >
             {[
@@ -253,25 +284,59 @@ export default function Navbar() {
             ].map(({ href, label }) => (
               <Link key={href} href={href}
                 onClick={() => setMenuAbierto(false)}
-                style={{ color: '#fff', fontFamily: 'Anton', fontSize: '28px',
-                letterSpacing: '2px', textDecoration: 'none', borderBottom: '1px solid #222',
-                paddingBottom: '24px' }}>
+                style={{
+                  color: '#fff',
+                  fontFamily: 'Space Grotesk',
+                  fontSize: '15px',
+                  letterSpacing: '1px',
+                  textDecoration: 'none',
+                  padding: '10px 16px',
+                  borderRadius: '10px',
+                  transition: 'background 0.2s',
+                  display: 'block',
+                }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
                 {label}
               </Link>
             ))}
 
-            {/* Botón sesión dentro del menú móvil */}
-            <div style={{ marginTop: 'auto', paddingTop: '24px' }}>
+            {/* Separador */}
+            <div style={{ height: '1px', background: 'rgba(255,255,255,0.1)', margin: '4px 0' }} />
+
+            {/* Botón sesión en estilo de lista compacta tipo Link */}
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
               {!loading && (
                 <>
                   {user ? (
-                    <div className="flex flex-col gap-4">
-                      <div className="font-mono text-xs text-white/40 uppercase">Sesión activa: <span className="text-neon-green font-bold">{user.email}</span></div>
+                    <>
+                      <div style={{
+                        color: 'rgba(255,255,255,0.4)',
+                        fontFamily: 'Space Grotesk',
+                        fontSize: '10px',
+                        letterSpacing: '1px',
+                        padding: '4px 16px',
+                        wordBreak: 'break-all'
+                      }}>
+                        {user.email?.toUpperCase()}
+                      </div>
                       {!isAdmin && (
                         <Link
                           href="/portal"
                           onClick={() => setMenuAbierto(false)}
-                          className="btn-tape w-full py-4 text-center font-anton text-xl tracking-widest"
+                          style={{
+                            color: '#00ff88',
+                            fontFamily: 'Space Grotesk',
+                            fontSize: '15px',
+                            letterSpacing: '1px',
+                            textDecoration: 'none',
+                            padding: '10px 16px',
+                            borderRadius: '10px',
+                            transition: 'background 0.2s',
+                            display: 'block',
+                          }}
+                          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
+                          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                         >
                           MI PORTAL
                         </Link>
@@ -280,7 +345,19 @@ export default function Navbar() {
                         <Link
                           href="/dashboard"
                           onClick={() => setMenuAbierto(false)}
-                          className="btn-tape w-full py-4 text-center font-anton text-xl tracking-widest"
+                          style={{
+                            color: '#00ff88',
+                            fontFamily: 'Space Grotesk',
+                            fontSize: '15px',
+                            letterSpacing: '1px',
+                            textDecoration: 'none',
+                            padding: '10px 16px',
+                            borderRadius: '10px',
+                            transition: 'background 0.2s',
+                            display: 'block',
+                          }}
+                          onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
+                          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                         >
                           PANEL CONTROL
                         </Link>
@@ -290,30 +367,76 @@ export default function Navbar() {
                           setMenuAbierto(false);
                           supabase.auth.signOut();
                         }}
-                        className="w-full py-4 text-center font-anton text-xl tracking-widest border border-white/20 hover:bg-white hover:text-black transition-all"
+                        style={{
+                          color: '#fff',
+                          fontFamily: 'Space Grotesk',
+                          fontSize: '15px',
+                          letterSpacing: '1px',
+                          textDecoration: 'none',
+                          padding: '10px 16px',
+                          borderRadius: '10px',
+                          transition: 'background 0.2s',
+                          display: 'block',
+                          width: '100%',
+                          textAlign: 'left',
+                          background: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer'
+                        }}
+                        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                       >
                         CERRAR SESIÓN
                       </button>
-                    </div>
+                    </>
                   ) : (
-                    <div className="flex flex-col gap-4">
+                    <>
                       <Link
                         href="/registro"
                         onClick={() => setMenuAbierto(false)}
-                        className="btn-tape w-full py-4 text-center font-anton text-xl tracking-widest"
+                        style={{
+                          color: '#00ff88',
+                          fontFamily: 'Space Grotesk',
+                          fontSize: '15px',
+                          letterSpacing: '1px',
+                          textDecoration: 'none',
+                          padding: '10px 16px',
+                          borderRadius: '10px',
+                          transition: 'background 0.2s',
+                          display: 'block',
+                        }}
+                        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                       >
-                        UNIRSE AL CLUB
+                        ÚNETE
                       </Link>
                       <button
                         onClick={() => {
                           setMenuAbierto(false);
                           setIsModalOpen(true);
                         }}
-                        className="w-full py-4 text-center font-anton text-xl tracking-widest border border-white/20 hover:bg-white hover:text-black transition-all"
+                        style={{
+                          color: '#fff',
+                          fontFamily: 'Space Grotesk',
+                          fontSize: '15px',
+                          letterSpacing: '1px',
+                          textDecoration: 'none',
+                          padding: '10px 16px',
+                          borderRadius: '10px',
+                          transition: 'background 0.2s',
+                          display: 'block',
+                          width: '100%',
+                          textAlign: 'left',
+                          background: 'transparent',
+                          border: 'none',
+                          cursor: 'pointer'
+                        }}
+                        onMouseEnter={e => (e.currentTarget.style.background = 'rgba(255,255,255,0.08)')}
+                        onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
                       >
                         ACCESO ADMIN
                       </button>
-                    </div>
+                    </>
                   )}
                 </>
               )}
@@ -321,6 +444,14 @@ export default function Navbar() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Overlay invisible para cerrar el menú al tocar fuera */}
+      {menuAbierto && (
+        <div
+          onClick={() => setMenuAbierto(false)}
+          style={{ position: 'fixed', inset: 0, zIndex: 98 }}
+        />
+      )}
 
       {/* Login Modal */}
       <AnimatePresence>
