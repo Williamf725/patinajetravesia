@@ -1,86 +1,19 @@
 
 > skating-club-template@0.1.0 dev
-> next dev
+> next dev -p 3005
 
    ▲ Next.js 15.5.19
-   - Local:        http://localhost:3000
-   - Network:      http://192.168.0.2:3000
+   - Local:        http://localhost:3005
+   - Network:      http://192.168.0.2:3005
 
  ✓ Starting...
- ✓ Ready in 2.6s
+ ✓ Ready in 2.3s
  ○ Compiling /middleware ...
- ✓ Compiled /middleware in 1371ms (169 modules)
+ ✓ Compiled /middleware in 648ms (169 modules)
  ○ Compiling / ...
 <w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (102kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
 <w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (244kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
- ✓ Compiled / in 9.1s (1642 modules)
- HEAD / 200 in 10096ms
- GET / 200 in 187ms
- ○ Compiling /registro ...
- ✓ Compiled /registro in 2.7s (1799 modules)
- GET /registro 200 in 3560ms
- ✓ Compiled in 1961ms (1619 modules)
- ✓ Compiled in 295ms (737 modules)
- ✓ Compiled in 940ms (906 modules)
-<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (102kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
-<w> [webpack.cache.PackFileCacheStrategy] Serializing big strings (244kiB) impacts deserialization performance (consider using Buffer instead and decode when needed)
- ✓ Compiled in 1725ms (1619 modules)
- ✓ Compiled in 502ms (737 modules)
- ✓ Compiled in 540ms (906 modules)
- ✓ Compiled in 1144ms (737 modules)
- ✓ Compiled in 336ms (737 modules)
- ✓ Compiled in 5.7s (737 modules)
- ✓ Compiled in 453ms (737 modules)
- ✓ Compiled in 430ms (737 modules)
- ✓ Compiled in 392ms (737 modules)
- ✓ Compiled in 404ms (737 modules)
- ✓ Compiled in 461ms (737 modules)
- ✓ Compiled in 413ms (737 modules)
- HEAD / 200 in 473ms
- GET / 200 in 128ms
- ○ Compiling /registro ...
- ✓ Compiled /registro in 1206ms (1062 modules)
- GET /registro 200 in 1860ms
- ⨯ Error: Could not find the module "/app/node_modules/next/dist/next-devtools/userspace/app/segment-explorer-node.js#SegmentViewNode" in the React Client Manifest. This is probably a bug in the React Server Components bundler.
-    at stringify (<anonymous>) {
-  digest: '4010361096'
-}
- ⨯ Error: Could not find the module "/app/node_modules/next/dist/next-devtools/userspace/app/segment-explorer-node.js#SegmentViewNode" in the React Client Manifest. This is probably a bug in the React Server Components bundler.
-    at stringify (<anonymous>)
-    at stringify (<anonymous>) {
-  digest: '3150377036'
-}
- ⨯ Error: Could not find the module "/app/node_modules/next/dist/next-devtools/userspace/app/segment-explorer-node.js#SegmentViewNode" in the React Client Manifest. This is probably a bug in the React Server Components bundler.
-    at stringify (<anonymous>)
-    at stringify (<anonymous>) {
-  digest: '3150377036'
-}
- ⨯ Error: Could not find the module "/app/node_modules/next/dist/next-devtools/userspace/app/segment-explorer-node.js#SegmentViewNode" in the React Client Manifest. This is probably a bug in the React Server Components bundler.
-    at stringify (<anonymous>)
-    at stringify (<anonymous>) {
-  digest: '3150377036'
-}
- ⨯ Error: Could not find the module "/app/node_modules/next/dist/next-devtools/userspace/app/segment-explorer-node.js#SegmentViewNode" in the React Client Manifest. This is probably a bug in the React Server Components bundler.
-    at stringify (<anonymous>) {
-  digest: '4010361096'
-}
- ⨯ Error: Could not find the module "/app/node_modules/next/dist/next-devtools/userspace/app/segment-explorer-node.js#SegmentViewNode" in the React Client Manifest. This is probably a bug in the React Server Components bundler.
-    at stringify (<anonymous>) {
-  digest: '4010361096'
-}
- ⨯ [TypeError: Cannot read properties of undefined (reading 'call')] {
-  digest: '2345072940'
-}
- ⨯ Error: Could not find the module "/app/node_modules/next/dist/next-devtools/userspace/app/segment-explorer-node.js#SegmentViewNode" in the React Client Manifest. This is probably a bug in the React Server Components bundler.
-    at stringify (<anonymous>) {
-  digest: '4010361096'
-}
-[TypeError: Cannot read properties of undefined (reading 'call')]
- ⨯ [TypeError: Cannot read properties of undefined (reading 'call')]
- ⨯ [TypeError: Cannot read properties of undefined (reading 'call')] {
-  page: '/registro'
-}
- ○ Compiling /_error ...
- ✓ Compiled /_error in 4.2s (2132 modules)
- GET /registro 500 in 10351ms
-Killed
+ ✓ Compiled / in 8.7s (1617 modules)
+ HEAD / 200 in 10773ms
+ GET / 200 in 467ms
+ GET / 200 in 293ms
