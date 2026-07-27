@@ -20,7 +20,6 @@ export default function TiendaClient({
   const router = useRouter();
 
   const [selectedCategoria, setSelectedCategoria] = useState<string>('todos');
-  const [selectedGenero, setSelectedGenero] = useState<'todos' | 'hombre' | 'mujer'>('todos');
   const [hoveredProduct, setHoveredProduct] = useState<string | null>(null);
 
   // Set category from URL if present
@@ -38,14 +37,6 @@ export default function TiendaClient({
       const slugMatch = prod.categoria?.slug === selectedCategoria || prod.categoria?.nombre.toLowerCase() === selectedCategoria;
       if (!slugMatch) return false;
     }
-
-    // Gender filter
-    if (selectedGenero !== 'todos') {
-      const txt = `${prod.nombre} ${prod.descripcion || ''}`.toLowerCase();
-      const isMatch = txt.includes(selectedGenero) || txt.includes('unisex');
-      if (!isMatch) return false;
-    }
-
     return true;
   });
 
@@ -60,50 +51,59 @@ export default function TiendaClient({
         </p>
       </header>
 
-      {/* Filter bar - Minimalist Apple style */}
-      <div className="border-y border-white/5 py-4 mb-12 overflow-x-auto scrollbar-none">
-        <div className="max-w-7xl mx-auto px-6 md:px-12 flex items-center justify-between gap-8 min-w-max">
-          {/* Categories filter */}
-          <div className="flex items-center gap-6 text-xs uppercase tracking-widest font-mono">
-            <button
-              onClick={() => { setSelectedCategoria('todos'); router.push('/tienda'); }}
-              className={`pb-1 transition-colors ${selectedCategoria === 'todos' ? 'text-neon-green border-b border-neon-green' : 'text-white/40 hover:text-white'}`}
-            >
-              Todos
-            </button>
-            {categorias.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => { setSelectedCategoria(cat.slug); router.push(`/tienda?categoria=${cat.slug}`); }}
-                className={`pb-1 transition-colors ${selectedCategoria === cat.slug ? 'text-neon-green border-b border-neon-green' : 'text-white/40 hover:text-white'}`}
-              >
-                {cat.nombre}
-              </button>
-            ))}
-          </div>
+      {/* Mostrar filtros solo si hay más de una categoría */}
+      {categorias && categorias.length > 1 && (
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '32px' }} className="max-w-7xl mx-auto px-6 md:px-12">
+          <button
+            onClick={() => { setSelectedCategoria('todos'); router.push('/tienda'); }}
+            style={{
+              background: selectedCategoria === 'todos' ? '#00ff88' : 'transparent',
+              color: selectedCategoria === 'todos' ? '#000' : '#fff',
+              border: '1px solid #333',
+              padding: '8px 20px',
+              fontFamily: 'Space Grotesk',
+              fontSize: '13px',
+              letterSpacing: '2px',
+              cursor: 'pointer',
+              borderRadius: '4px',
+            }}>
+            TODOS
+          </button>
 
-          {/* Gender Filter */}
-          <div className="flex items-center gap-6 text-xs uppercase tracking-widest font-mono">
-            {(['todos', 'hombre', 'mujer'] as const).map((gen) => (
-              <button
-                key={gen}
-                onClick={() => setSelectedGenero(gen)}
-                className={`pb-1 transition-colors ${selectedGenero === gen ? 'text-white font-bold' : 'text-white/40 hover:text-white'}`}
-              >
-                {gen === 'todos' ? 'Todo Género' : gen}
-              </button>
-            ))}
-          </div>
+          {categorias.map(cat => (
+            <button
+              key={cat.id}
+              onClick={() => { setSelectedCategoria(cat.slug); router.push(`/tienda?categoria=${cat.slug}`); }}
+              style={{
+                background: selectedCategoria === cat.slug ? '#00ff88' : 'transparent',
+                color: selectedCategoria === cat.slug ? '#000' : '#fff',
+                border: '1px solid #333',
+                padding: '8px 20px',
+                fontFamily: 'Space Grotesk',
+                fontSize: '13px',
+                letterSpacing: '2px',
+                cursor: 'pointer',
+                borderRadius: '4px',
+              }}>
+              {cat.nombre.toUpperCase()}
+            </button>
+          ))}
         </div>
-      </div>
+      )}
 
       {/* Products Grid */}
       <main className="max-w-7xl mx-auto px-6 md:px-12 pb-24">
-        {filteredProductos.length === 0 ? (
+        {productos.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '80px 0' }}>
+            <p style={{ color: '#555', fontFamily: 'Space Grotesk', fontSize: '18px' }}>
+              Próximamente nuevos productos
+            </p>
+          </div>
+        ) : filteredProductos.length === 0 ? (
           <div className="text-center py-20 space-y-4">
             <p className="text-white/40 uppercase tracking-widest text-sm">No se encontraron productos</p>
             <button
-              onClick={() => { setSelectedCategoria('todos'); setSelectedGenero('todos'); }}
+              onClick={() => { setSelectedCategoria('todos'); router.push('/tienda'); }}
               className="border border-white/20 px-6 py-3 text-xs uppercase tracking-widest hover:bg-white hover:text-black transition-all"
             >
               Restablecer filtros
