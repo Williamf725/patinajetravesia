@@ -1,12 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Categoria, Producto, CarritoItem } from '@/types/database';
-import { createClient } from '@/lib/supabase/client';
-import TiendaNavbar from './TiendaNavbar';
-import TiendaCartDrawer from './TiendaCartDrawer';
+import { Categoria, Producto } from '@/types/database';
 
 interface TiendaClientProps {
   initialUser: { id: string; email?: string | null } | null;
@@ -16,34 +13,15 @@ interface TiendaClientProps {
 }
 
 export default function TiendaClient({
-  initialUser,
-  alumnoName,
   categorias,
   productos
 }: TiendaClientProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const supabase = createClient();
 
-  const [user, setUser] = useState(initialUser);
   const [selectedCategoria, setSelectedCategoria] = useState<string>('todos');
   const [selectedGenero, setSelectedGenero] = useState<'todos' | 'hombre' | 'mujer'>('todos');
-
-  // Cart state
-  const [cartItems, setCartItems] = useState<CarritoItem[]>([]);
-  const [isCartOpen, setIsCartOpen] = useState(false);
   const [hoveredProduct, setHoveredProduct] = useState<string | null>(null);
-
-  // Sync user status on mount
-  useEffect(() => {
-    const getUser = async () => {
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      if (currentUser) {
-        setUser(currentUser);
-      }
-    };
-    getUser();
-  }, [supabase]);
 
   // Set category from URL if present
   useEffect(() => {
@@ -52,35 +30,6 @@ export default function TiendaClient({
       setSelectedCategoria(catParam);
     }
   }, [searchParams]);
-
-  // Load cart items from Supabase
-  const loadCart = useCallback(async () => {
-    if (!user) return;
-    try {
-      const { data, error } = await supabase
-        .from('carrito')
-        .select(`
-          *,
-          producto:productos(
-            *,
-            fotos:producto_fotos(*)
-          )
-        `)
-        .eq('user_id', user.id);
-
-      if (error) throw error;
-      setCartItems((data || []) as CarritoItem[]);
-    } catch (err) {
-      console.error('Error loading cart:', err);
-    }
-  }, [user, supabase]);
-
-  useEffect(() => {
-    loadCart();
-  }, [loadCart]);
-
-  // Total cart count
-  const cartCount = cartItems.reduce((acc, item) => acc + item.cantidad, 0);
 
   // Filter products
   const filteredProductos = productos.filter((prod) => {
@@ -102,9 +51,6 @@ export default function TiendaClient({
 
   return (
     <div className="min-h-screen bg-black text-white font-space antialiased selection:bg-white selection:text-black">
-      {/* Navbar */}
-      <TiendaNavbar cartCount={cartCount} onCartOpen={() => setIsCartOpen(true)} />
-
       {/* Hero Header */}
       <header className="pt-32 pb-16 px-6 md:px-12 text-center max-w-4xl mx-auto space-y-4">
         <span className="font-mono text-[10px] text-white/40 uppercase tracking-[0.4em] block">Colección Oficial</span>
@@ -249,16 +195,6 @@ export default function TiendaClient({
           </div>
         )}
       </main>
-
-      {/* Cart Sidebar Drawer */}
-      <TiendaCartDrawer
-        isOpen={isCartOpen}
-        onClose={() => setIsCartOpen(false)}
-        cartItems={cartItems}
-        onRefreshCart={loadCart}
-        user={user}
-        alumnoName={alumnoName}
-      />
     </div>
   );
 

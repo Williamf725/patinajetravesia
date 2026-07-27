@@ -1,11 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Producto, CarritoItem } from '@/types/database';
+import { Producto } from '@/types/database';
 import { createClient } from '@/lib/supabase/client';
-import TiendaNavbar from './TiendaNavbar';
-import TiendaCartDrawer from './TiendaCartDrawer';
 import { ArrowLeft, ShoppingBag, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
 import Link from 'next/link';
@@ -18,8 +16,7 @@ interface ProductoDetailClientProps {
 
 export default function ProductoDetailClient({
   producto,
-  initialUser,
-  alumnoName
+  initialUser
 }: ProductoDetailClientProps) {
   const router = useRouter();
   const supabase = createClient();
@@ -29,10 +26,9 @@ export default function ProductoDetailClient({
   const [selectedColor, setSelectedColor] = useState<string>('');
   const [selectedFotoUrl, setSelectedFotoUrl] = useState<string>('');
 
-  // Cart state
-  const [cartItems, setCartItems] = useState<CarritoItem[]>([]);
-  const [isCartOpen, setIsCartOpen] = useState(false);
   const [isAdding, setIsAdding] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [mensaje, setMensaje] = useState<string | null>(null);
 
   // Sync user status on mount
   useEffect(() => {
@@ -53,97 +49,64 @@ export default function ProductoDetailClient({
     }
   }, [producto]);
 
-  // Load cart items from Supabase
-  const loadCart = useCallback(async () => {
-    if (!user) return;
-    try {
-      const { data, error } = await supabase
-        .from('carrito')
-        .select(`
-          *,
-          producto:productos(
-            *,
-            fotos:producto_fotos(*)
-          )
-        `)
-        .eq('user_id', user.id);
-
-      if (error) throw error;
-      setCartItems((data || []) as CarritoItem[]);
-    } catch (err) {
-      console.error('Error loading cart:', err);
-    }
-  }, [user, supabase]);
-
-  useEffect(() => {
-    loadCart();
-  }, [loadCart]);
-
-  // Total cart count
-  const cartCount = cartItems.reduce((acc, item) => acc + item.cantidad, 0);
-
-  // Add to cart
   const handleAddToCart = async () => {
-    if (!user) {
+    // 1. Verificar sesión primero
+    const { data: { user: currentUser } } = await supabase.auth.getUser();
+
+    if (!currentUser) {
+      // Redirigir a login con redirect de vuelta al producto
       router.push(`/login?redirect=/tienda/${producto.slug}`);
       return;
     }
 
     if (!selectedTalla) {
-      toast.error('Por favor selecciona una talla');
-      return;
-    }
-
-    if (!selectedColor) {
-      toast.error('Por favor selecciona un color');
+      setError('Selecciona una talla antes de agregar al carrito');
+      toast.error('Selecciona una talla antes de agregar al carrito');
       return;
     }
 
     setIsAdding(true);
+    setError(null);
+
     try {
-      // Fetch if already exists to increment quantity
-      const { data: existing } = await supabase
+      // Usar upsert según lo solicitado en el prompt con onConflict e ignoreDuplicates
+      const { error: upsertError } = await supabase
         .from('carrito')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('producto_id', producto.id)
-        .eq('talla', selectedTalla)
-        .eq('color', selectedColor)
-        .single();
+        .upsert({
+          user_id: currentUser.id,
+          producto_id: producto.id,
+          talla: selectedTalla,
+          color: selectedColor || null,
+          cantidad: 1
+        }, {
+          onConflict: 'user_id,producto_id,talla,color',
+          ignoreDuplicates: false
+        });
 
-      if (existing) {
-        const { error } = await supabase
-          .from('carrito')
-          .update({ cantidad: existing.cantidad + 1 })
-          .eq('id', existing.id);
-
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from('carrito')
-          .insert({
-            user_id: user.id,
-            producto_id: producto.id,
-            talla: selectedTalla,
-            color: selectedColor,
-            cantidad: 1
-          });
-
-        if (error) throw error;
+      if (upsertError) {
+        console.error('Error agregando al carrito:', upsertError.message, upsertError.code);
+        setError('Error al agregar al carrito. Intenta de nuevo.');
+        toast.error('Error al agregar al carrito. Intenta de nuevo.');
+        return;
       }
 
-      toast.success('¡Añadido al carrito!');
-      await loadCart();
-      setIsCartOpen(true); // Open drawer automatically
+      setMensaje('✅ Agregado al carrito');
+      toast.success('✅ Agregado al carrito');
+
+      // Actualizar contador del carrito en navbar
+      window.dispatchEvent(new CustomEvent('carrito-actualizado'));
+
+      setTimeout(() => setMensaje(null), 3000);
+
     } catch (err) {
-      console.error(err);
-      toast.error('Error al agregar al carrito');
+      console.error('Error inesperado:', err);
+      setError('Error inesperado. Intenta de nuevo.');
+      toast.error('Error inesperado. Intenta de nuevo.');
     } finally {
       setIsAdding(false);
     }
   };
 
-  // Pedir por WhatsApp fallback
   const handlePedirPorWhatsApp = () => {
     const tallaText = selectedTalla ? `en talla [${selectedTalla}]` : '';
     const colorText = selectedColor ? `y color [${selectedColor}]` : '';
@@ -159,9 +122,6 @@ export default function ProductoDetailClient({
 
   return (
     <div className="min-h-screen bg-black text-white font-space antialiased selection:bg-white selection:text-black">
-      {/* Navbar */}
-      <TiendaNavbar cartCount={cartCount} onCartOpen={() => setIsCartOpen(true)} />
-
       {/* Detail Container */}
       <main className="max-w-7xl mx-auto px-6 md:px-12 pt-32 pb-24">
         {/* Back Link */}
@@ -169,12 +129,15 @@ export default function ProductoDetailClient({
           <ArrowLeft size={14} /> Regresar a Tienda
         </Link>
 
+        {user && <span className="sr-only">Logged in as {user.email}</span>}
+
         <div className="grid grid-cols-1 lg:grid-cols-[1.2fr_1fr] gap-12 lg:gap-20">
 
           {/* Left Column: Image Gallery (Apple style layout) */}
           <div className="space-y-6">
             <div className="aspect-[3/4] bg-neutral-900 overflow-hidden relative">
               {selectedFotoUrl ? (
+                /* eslint-disable-next-line @next/next/no-img-element */
                 <img src={selectedFotoUrl} alt={producto.nombre} className="object-cover w-full h-full transition-all duration-500" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-xs uppercase tracking-widest text-white/20">Sin Imagen</div>
@@ -186,12 +149,13 @@ export default function ProductoDetailClient({
               <div className="flex gap-4 overflow-x-auto pb-2 scrollbar-none">
                 {fotos.map((f) => (
                   <button
-                    key={f.id}
+                    key={f.url}
                     onClick={() => setSelectedFotoUrl(f.url)}
                     className={`aspect-[3/4] w-20 bg-neutral-900 overflow-hidden border-2 transition-all shrink-0 ${
                       selectedFotoUrl === f.url ? 'border-white' : 'border-transparent opacity-50 hover:opacity-100'
                     }`}
                   >
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img src={f.url} alt={f.alt || producto.nombre} className="object-cover w-full h-full" />
                   </button>
                 ))}
@@ -235,7 +199,7 @@ export default function ProductoDetailClient({
                     if (!isAvailable) {
                       return (
                         <button
-                          key={t.id}
+                          key={t.talla}
                           disabled
                           className="relative w-12 h-12 rounded-full border border-white/5 flex items-center justify-center text-xs text-white/20 font-bold bg-transparent overflow-hidden cursor-not-allowed opacity-30 after:absolute after:inset-0 after:bg-white/40 after:h-[1px] after:w-full after:top-1/2 after:-translate-y-1/2 after:rotate-[45deg]"
                         >
@@ -246,7 +210,7 @@ export default function ProductoDetailClient({
 
                     return (
                       <button
-                        key={t.id}
+                        key={t.talla}
                         onClick={() => setSelectedTalla(t.talla)}
                         className={`w-12 h-12 rounded-full border flex items-center justify-center text-xs font-bold transition-all ${
                           isSelected
@@ -271,7 +235,7 @@ export default function ProductoDetailClient({
                     const isSelected = selectedColor === c.nombre;
                     return (
                       <button
-                        key={c.id}
+                        key={c.nombre}
                         onClick={() => setSelectedColor(c.nombre)}
                         style={{ backgroundColor: c.hex }}
                         className={`w-8 h-8 rounded-full border border-white/20 transition-all ${
@@ -282,6 +246,19 @@ export default function ProductoDetailClient({
                     );
                   })}
                 </div>
+              </div>
+            )}
+
+            {/* Feedback Messages */}
+            {error && (
+              <div className="p-3 bg-hot-pink/10 border-l-4 border-hot-pink text-hot-pink font-mono text-[10px] uppercase tracking-wider">
+                {error}
+              </div>
+            )}
+
+            {mensaje && (
+              <div className="p-3 bg-neon-green/10 border-l-4 border-neon-green text-neon-green font-mono text-[10px] uppercase tracking-wider">
+                {mensaje}
               </div>
             )}
 
@@ -314,16 +291,6 @@ export default function ProductoDetailClient({
           </div>
         </div>
       </main>
-
-      {/* Cart Sidebar Drawer */}
-      <TiendaCartDrawer
-        isOpen={isCartOpen}
-        onClose={() => setIsCartOpen(false)}
-        cartItems={cartItems}
-        onRefreshCart={loadCart}
-        user={user}
-        alumnoName={alumnoName}
-      />
     </div>
   );
 }
