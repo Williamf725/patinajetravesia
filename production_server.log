@@ -7,4 +7,11 @@
    - Network:      http://192.168.0.2:3000
 
  ✓ Starting...
- ✓ Ready in 900ms
+ ✓ Ready in 701ms
+=== PRUEBA DE CORREO INICIADA ===
+GMAIL_USER: undefined
+APP_PASSWORD existe: false
+APP_PASSWORD longitud sin espacios: undefined
+APP_PASSWORD primeros 4 chars: undefined
+ERROR CRÍTICO: Faltan variables GMAIL_USER o GMAIL_APP_PASSWORD
+=== RESULTADO: {"error":"Configuración de correo incompleta"}
