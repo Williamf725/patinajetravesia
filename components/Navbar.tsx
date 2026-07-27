@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, usePathname } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useEffect, useState, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
@@ -30,6 +30,7 @@ interface CarritoItemCompleto {
 
 export default function Navbar() {
   const router = useRouter();
+  const pathname = usePathname();
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -223,6 +224,9 @@ export default function Navbar() {
 
   const isAdmin = user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
 
+  const isTiendaRoute = pathname ? pathname.startsWith('/tienda') : false;
+  const mostrarCarrito = isTiendaRoute || cantidadCarrito > 0;
+
   const glassmorphismStyle = {
     background: 'rgba(0,0,0,0.3)',
     backdropFilter: 'blur(12px)',
@@ -287,47 +291,45 @@ export default function Navbar() {
 
         {/* Derecha: carrito + menú */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '16px' }}>
-          {/* Ícono carrito — siempre visible en navbar, tanto en móvil como en desktop */}
-          <button
-            onClick={() => {
-              if (!user) {
-                router.push('/login?redirect=/tienda');
-                return;
-              }
-              setCarritoAbierto(true);
-            }}
-            style={cartButtonGlassmorphismStyle}
-            className="hover:text-neon-green hover:border-neon-green/30 transition-all"
-          >
-            {/* Ícono carrito SVG */}
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
-              stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
-              <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
-              <line x1="3" y1="6" x2="21" y2="6"/>
-              <path d="M16 10a4 4 0 01-8 0"/>
-            </svg>
-            {/* Contador */}
-            {cantidadCarrito > 0 && (
-              <span style={{
-                position: 'absolute',
-                top: '-6px',
-                right: '-6px',
-                background: '#00ff88',
-                color: '#000',
-                borderRadius: '50%',
-                width: '18px',
-                height: '18px',
-                fontSize: '11px',
-                fontWeight: 'bold',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                lineHeight: 1,
-              }}>
-                {cantidadCarrito > 9 ? '9+' : cantidadCarrito}
-              </span>
-            )}
-          </button>
+          {/* Ícono carrito — visible si mostrarCarrito es verdadero */}
+          {mostrarCarrito && (
+            <button
+              onClick={() => {
+                setCarritoAbierto(true);
+              }}
+              style={cartButtonGlassmorphismStyle}
+              className="hover:text-neon-green hover:border-neon-green/30 transition-all"
+            >
+              {/* Ícono carrito SVG */}
+              <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+                stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <path d="M6 2L3 6v14a2 2 0 002 2h14a2 2 0 002-2V6l-3-4z"/>
+                <line x1="3" y1="6" x2="21" y2="6"/>
+                <path d="M16 10a4 4 0 01-8 0"/>
+              </svg>
+              {/* Contador */}
+              {cantidadCarrito > 0 && (
+                <span style={{
+                  position: 'absolute',
+                  top: '-6px',
+                  right: '-6px',
+                  background: '#00ff88',
+                  color: '#000',
+                  borderRadius: '50%',
+                  width: '18px',
+                  height: '18px',
+                  fontSize: '11px',
+                  fontWeight: 'bold',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  lineHeight: 1,
+                }}>
+                  {cantidadCarrito > 9 ? '9+' : cantidadCarrito}
+                </span>
+              )}
+            </button>
+          )}
 
           {/* Botón sesión con glassmorphism — visible en desktop */}
           <div className="desktop-auth" style={{ gap: '12px' }}>

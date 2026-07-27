@@ -3,6 +3,7 @@ import { createServerClient } from '@/lib/supabase/server';
 import { Categoria, Producto } from '@/types/database';
 import TiendaClient from '@/components/tienda/TiendaClient';
 
+export const dynamic = 'force-dynamic';
 export const revalidate = 0; // Disable static cache for dynamic cart & user checks
 
 export default async function TiendaPage() {

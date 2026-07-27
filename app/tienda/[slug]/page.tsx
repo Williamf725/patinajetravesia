@@ -3,6 +3,7 @@ import { createServerClient } from '@/lib/supabase/server';
 import { notFound } from 'next/navigation';
 import ProductoDetailClient from '@/components/tienda/ProductoDetailClient';
 
+export const dynamic = 'force-dynamic';
 export const revalidate = 0; // Dynamic check for user/cart sync
 
 interface PageProps {
