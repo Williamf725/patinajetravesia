@@ -5,8 +5,20 @@ import { createServerClient } from '@/lib/supabase/server'
 import { enviarCorreo } from '@/lib/email/mailer'
 import { plantillaRecuperacion } from '@/lib/email/plantillas'
 
-export async function solicitarRecuperacion(_prevState: unknown, formData: FormData) {
+export async function solicitarRecuperacion(prevStateOrFormData: unknown, maybeFormData?: FormData) {
+  // Soporta tanto llamadas directas como firmas de useActionState (prevState, formData)
+  let formData: FormData
+  if (prevStateOrFormData instanceof FormData) {
+    formData = prevStateOrFormData
+  } else if (maybeFormData instanceof FormData) {
+    formData = maybeFormData
+  } else {
+    console.error('ERROR: No se recibió un FormData válido en solicitarRecuperacion')
+    return { error: 'Formulario inválido' }
+  }
+
   const email = (formData.get('email') as string)?.toLowerCase()?.trim()
+  console.log('=== SOLICITUD RECUPERACIÓN para:', email)
 
   if (!email) {
     return { error: 'Ingresa tu correo electrónico' }
@@ -14,55 +26,40 @@ export async function solicitarRecuperacion(_prevState: unknown, formData: FormD
 
   const supabase = await createServerClient()
 
-  // Verificar que el email existe en alumnos
-  const { data: alumno, error: queryError } = await supabase
+  const { data: alumno, error: alumnoError } = await supabase
     .from('alumnos')
     .select('id, nombre, email')
     .eq('email', email)
-    .maybeSingle()
+    .single()
 
-  if (queryError) {
-    console.error('Error buscando alumno:', queryError)
-    return { error: 'Error al procesar la solicitud' }
-  }
+  console.log('Alumno encontrado:', alumno ? 'SÍ' : 'NO', alumnoError?.message)
 
-  // Por seguridad, siempre mostrar el mismo mensaje de éxito aunque no exista
   if (!alumno) {
+    console.log('No se encontró alumno con email:', email)
     return { success: true }
   }
 
-  // Generar token único con expiración de 1 hora
   const token = crypto.randomBytes(32).toString('hex')
   const expiry = new Date(Date.now() + 60 * 60 * 1000).toISOString()
 
-  // Guardar token en Supabase
   const { error: updateError } = await supabase
     .from('alumnos')
-    .update({
-      reset_token: token,
-      reset_token_expiry: expiry
-    })
+    .update({ reset_token: token, reset_token_expiry: expiry })
     .eq('id', alumno.id)
 
-  if (updateError) {
-    console.error('Error al guardar token:', updateError)
-    return { error: 'Error al generar el enlace de recuperación' }
-  }
+  console.log('Token guardado:', updateError ? 'ERROR: ' + updateError.message : 'OK')
 
-  // Construir link de recuperación
-  const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://patinajetravesia.vercel.app'
-  const link = `${appUrl}/auth/nueva-contrasena?token=${token}&email=${encodeURIComponent(email)}`
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://patinajetravesia.vercel.app'
+  const link = `${baseUrl}/auth/nueva-contrasena?token=${token}&email=${encodeURIComponent(email)}`
+  console.log('Link generado:', link)
 
-  // Enviar correo con Nodemailer
-  const mailResult = await enviarCorreo({
+  const resultadoCorreo = await enviarCorreo({
     para: email,
     asunto: 'Restablece tu contraseña — Club Travesía',
     html: plantillaRecuperacion(alumno.nombre || 'Alumno', link),
   })
 
-  if (mailResult.error) {
-    return { error: mailResult.error }
-  }
+  console.log('=== RESULTADO ENVÍO CORREO:', JSON.stringify(resultadoCorreo))
 
   return { success: true }
 }
