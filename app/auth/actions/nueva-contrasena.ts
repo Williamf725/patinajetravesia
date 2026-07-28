@@ -3,11 +3,31 @@
 import { createServerClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
 
-export async function cambiarContrasena(_prevState: unknown, formData: FormData) {
+export async function cambiarContrasena(prevStateOrFormData: unknown, maybeFormData?: FormData) {
+  // Soporta tanto llamadas directas como useActionState (prevState, formData)
+  let formData: FormData
+  if (prevStateOrFormData instanceof FormData) {
+    formData = prevStateOrFormData
+  } else if (maybeFormData instanceof FormData) {
+    formData = maybeFormData
+  } else {
+    console.error('ERROR: No se recibió un FormData válido en cambiarContrasena')
+    return { error: 'Formulario inválido' }
+  }
+
   const token = formData.get('token') as string
   const email = (formData.get('email') as string)?.toLowerCase()?.trim()
   const password = formData.get('password') as string
   const confirmar = formData.get('confirmar') as string
+
+  console.log('=== CAMBIAR CONTRASEÑA ===')
+  console.log('Email recibido:', email)
+  console.log('Token recibido (primeros 8):', token?.substring(0, 8))
+  console.log('Token longitud:', token?.length)
+
+  if (!token || !email) {
+    return { error: 'Enlace inválido — faltan parámetros' }
+  }
 
   if (!password || !confirmar) {
     return { error: 'Por favor, completa todos los campos.' }
@@ -27,17 +47,23 @@ export async function cambiarContrasena(_prevState: unknown, formData: FormData)
 
   const supabase = await createServerClient()
 
-  // Verificar token válido y no expirado en la tabla alumnos
-  const { data: alumno, error: queryError } = await supabase
+  // Buscar token usando limit(1) y loguear los detalles
+  const { data: alumnos, error: tokenError } = await supabase
     .from('alumnos')
     .select('id, reset_token, reset_token_expiry')
     .eq('email', email)
     .eq('reset_token', token)
-    .maybeSingle()
+    .limit(1)
 
-  if (queryError || !alumno) {
-    console.error('Error buscando alumno con token:', queryError)
-    return { error: 'Enlace inválido o ya fue usado.' }
+  console.log('Búsqueda token - encontrado:', alumnos?.length, 'error:', tokenError?.message)
+  console.log('Email buscado:', email)
+  console.log('Token buscado (primeros 8):', token?.substring(0, 8))
+
+  const alumno = alumnos?.[0] || null
+
+  if (!alumno) {
+    console.log('No se encontró alumno con ese token y email')
+    return { error: 'Enlace inválido o ya fue usado' }
   }
 
   if (!alumno.reset_token_expiry || new Date(alumno.reset_token_expiry) < new Date()) {

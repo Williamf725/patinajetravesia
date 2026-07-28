@@ -47,7 +47,7 @@ export async function solicitarRecuperacion(prevStateOrFormData: unknown, maybeF
     .update({ reset_token: token, reset_token_expiry: expiry })
     .eq('id', alumno.id)
 
-  console.log('Token guardado:', updateError ? 'ERROR: ' + updateError.message : 'OK')
+  console.log('Token guardado en BD:', updateError ? 'ERROR: ' + updateError.message : 'OK - token: ' + token.substring(0, 8) + '...')
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://patinajetravesia.vercel.app'
   const link = `${baseUrl}/auth/nueva-contrasena?token=${token}&email=${encodeURIComponent(email)}`
