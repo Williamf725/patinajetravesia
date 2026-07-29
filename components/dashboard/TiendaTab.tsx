@@ -65,7 +65,15 @@ export default function TiendaTab() {
     try {
       // Fetch categories
       const { data: catData } = await supabase.from('categorias').select('*').order('nombre');
-      setCategorias((catData || []) as Categoria[]);
+      const filteredCats = (catData || []).filter(cat => {
+        const slug = cat.slug?.toLowerCase() || '';
+        const name = cat.nombre?.toLowerCase() || '';
+        return !slug.includes('sudadera') &&
+               !slug.includes('pantalon') &&
+               !name.includes('sudadera') &&
+               !name.includes('pantalon');
+      });
+      setCategorias(filteredCats as Categoria[]);
 
       // Fetch products
       const { data: prodData } = await supabase
