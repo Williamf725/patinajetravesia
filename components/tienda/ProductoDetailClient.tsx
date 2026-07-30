@@ -25,6 +25,8 @@ export default function ProductoDetailClient({
   const [selectedTalla, setSelectedTalla] = useState<string>('');
   const [selectedColor, setSelectedColor] = useState<string>('');
   const [selectedFotoUrl, setSelectedFotoUrl] = useState<string>('');
+  const [personalizado, setPersonalizado] = useState(false);
+  const [nombrePersonalizacion, setNombrePersonalizacion] = useState('');
 
   const [isAdding, setIsAdding] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -65,6 +67,12 @@ export default function ProductoDetailClient({
       return;
     }
 
+    if (personalizado && !nombrePersonalizacion.trim()) {
+      setError('Por favor escribe el nombre o texto a personalizar');
+      toast.error('Por favor escribe el nombre o texto a personalizar');
+      return;
+    }
+
     setIsAdding(true);
     setError(null);
 
@@ -77,7 +85,10 @@ export default function ProductoDetailClient({
           producto_id: producto.id,
           talla: selectedTalla,
           color: selectedColor || null,
-          cantidad: 1
+          cantidad: 1,
+          personalizado,
+          nombre_personalizacion: personalizado ? nombrePersonalizacion : null,
+          precio_extra: personalizado ? 4000 : 0
         }, {
           onConflict: 'user_id,producto_id,talla,color',
           ignoreDuplicates: false
@@ -110,11 +121,18 @@ export default function ProductoDetailClient({
   const handlePedirPorWhatsApp = () => {
     const tallaText = selectedTalla ? `en talla [${selectedTalla}]` : '';
     const colorText = selectedColor ? `y color [${selectedColor}]` : '';
-    const msg = `¡Hola! Estoy interesado en el producto *${producto.nombre}* ${tallaText} ${colorText} de Travesía Club.`;
+    const personalizationText = personalizado
+      ? `\n✏️ Personalizado con el nombre: "${nombrePersonalizacion}"`
+      : '';
+    const msg = `¡Hola! Estoy interesado en el producto *${producto.nombre}* ${tallaText} ${colorText}${personalizationText} de Travesía Club.`;
     window.open(`https://wa.me/573222508676?text=${encodeURIComponent(msg)}`, '_blank');
   };
 
   const hasDescuento = producto.precio_descuento !== null && producto.precio_descuento !== undefined && producto.precio_descuento < producto.precio;
+
+  const basePrecio = hasDescuento ? (producto.precio_descuento || producto.precio) : producto.precio;
+  const precioFinal = basePrecio + (personalizado ? 4000 : 0);
+  const precioOriginalFinal = producto.precio + (personalizado ? 4000 : 0);
 
   const fotos = producto.fotos || [];
   const tallas = producto.tallas || [];
@@ -172,11 +190,17 @@ export default function ProductoDetailClient({
               <div className="flex items-center gap-4">
                 {hasDescuento ? (
                   <>
-                    <span className="text-white/40 line-through text-lg font-mono">${producto.precio.toLocaleString('es-CO')}</span>
-                    <span className="text-neon-green text-2xl font-bold font-mono">${producto.precio_descuento?.toLocaleString('es-CO')} COP</span>
+                    <span className="text-white/40 line-through text-lg font-mono">
+                      ${precioOriginalFinal.toLocaleString('es-CO')}
+                    </span>
+                    <span className="text-neon-green text-2xl font-bold font-mono">
+                      ${precioFinal.toLocaleString('es-CO')} COP
+                    </span>
                   </>
                 ) : (
-                  <span className="text-white text-2xl font-bold font-mono">${producto.precio.toLocaleString('es-CO')} COP</span>
+                  <span className="text-white text-2xl font-bold font-mono">
+                    ${precioFinal.toLocaleString('es-CO')} COP
+                  </span>
                 )}
               </div>
             </div>
@@ -246,6 +270,65 @@ export default function ProductoDetailClient({
                     );
                   })}
                 </div>
+              </div>
+            )}
+
+            {/* Personalization Selector */}
+            {producto.permite_personalizacion && (
+              <div style={{ marginBottom: '24px' }}>
+                <p style={{ color: '#aaa', fontFamily: 'Space Grotesk',
+                  fontSize: '13px', letterSpacing: '2px', margin: '0 0 12px' }}>
+                  PERSONALIZACIÓN
+                </p>
+                <div style={{ display: 'flex', gap: '8px' }}>
+                  {/* Botón Sin personalizar */}
+                  <button
+                    onClick={() => setPersonalizado(false)}
+                    style={{
+                      padding: '10px 20px',
+                      border: !personalizado ? '2px solid #00ff88' : '2px solid #333',
+                      background: !personalizado ? 'rgba(0,255,136,0.1)' : 'transparent',
+                      color: !personalizado ? '#00ff88' : '#666',
+                      fontFamily: 'Space Grotesk', fontSize: '13px',
+                      letterSpacing: '1px', cursor: 'pointer', borderRadius: '4px',
+                    }}>
+                    Sin personalizar
+                  </button>
+                  {/* Botón Personalizado */}
+                  <button
+                    onClick={() => setPersonalizado(true)}
+                    style={{
+                      padding: '10px 20px',
+                      border: personalizado ? '2px solid #00ff88' : '2px solid #333',
+                      background: personalizado ? 'rgba(0,255,136,0.1)' : 'transparent',
+                      color: personalizado ? '#00ff88' : '#666',
+                      fontFamily: 'Space Grotesk', fontSize: '13px',
+                      letterSpacing: '1px', cursor: 'pointer', borderRadius: '4px',
+                    }}>
+                    Personalizado +$4.000
+                  </button>
+                </div>
+                {/* Campo nombre personalización */}
+                {personalizado && (
+                  <div style={{ marginTop: '12px' }}>
+                    <input
+                      type="text"
+                      placeholder="Nombre o texto a personalizar"
+                      value={nombrePersonalizacion}
+                      onChange={e => setNombrePersonalizacion(e.target.value)}
+                      maxLength={30}
+                      style={{
+                        width: '100%', background: '#111', border: '1px solid #333',
+                        color: '#fff', padding: '12px', fontFamily: 'Space Grotesk',
+                        fontSize: '14px', borderRadius: '4px', outline: 'none',
+                      }}
+                    />
+                    <p style={{ color: '#555', fontSize: '12px', margin: '6px 0 0',
+                      fontFamily: 'Space Grotesk' }}>
+                      Escribe el nombre o texto que quieres en tu uniforme
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 

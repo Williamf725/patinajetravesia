@@ -138,6 +138,7 @@ export type Producto = {
   genero?: string;
   orden: number;
   categoria_id: string | null;
+  permite_personalizacion?: boolean;
   created_at: string;
   // Joins
   categoria?: Categoria | null;
@@ -153,6 +154,9 @@ export type CarritoItem = {
   talla: string;
   color: string;
   cantidad: number;
+  personalizado?: boolean;
+  nombre_personalizacion?: string | null;
+  precio_extra?: number;
   created_at: string;
   // Joins
   producto?: Producto;

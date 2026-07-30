@@ -17,6 +17,9 @@ interface CarritoItemCompleto {
   talla: string;
   color: string | null;
   cantidad: number;
+  personalizado?: boolean;
+  nombre_personalizacion?: string | null;
+  precio_extra?: number;
   created_at: string;
   producto?: {
     id: string;
@@ -203,23 +206,35 @@ export default function Navbar() {
 
   const enviarPedidoPorWhatsApp = () => {
     const lineas = itemsCarrito.map(item => {
-      const itemPrice = item.producto?.precio_descuento || item.producto?.precio || 0;
-      return `• ${item.producto?.nombre} — Talla: ${item.talla}${item.color ? ` Color: ${item.color}` : ''} x${item.cantidad} — $${(itemPrice * item.cantidad).toLocaleString('es-CO')} COP`;
+      const basePrice = (item.producto?.precio_descuento !== null && item.producto?.precio_descuento !== undefined)
+        ? item.producto.precio_descuento
+        : (item.producto?.precio || 0);
+      const precioUnitario = basePrice + (item.precio_extra || 0);
+      const lineaPersonalizacion = item.personalizado
+        ? `\n  ✏️ Personalizado${item.nombre_personalizacion ? ` con: "${item.nombre_personalizacion}"` : ' (nombre por definir)'} +$4.000`
+        : '';
+      return `• ${item.producto?.nombre} — Talla: ${item.talla}${item.color ? ` · Color: ${item.color}` : ''} x${item.cantidad} — $${(precioUnitario * item.cantidad).toLocaleString('es-CO')} COP${lineaPersonalizacion}`;
     }).join('\n');
 
-    const totalCarrito = itemsCarrito.reduce((acc, item) => {
-      const price = item.producto?.precio_descuento || item.producto?.precio || 0;
-      return acc + (price * item.cantidad);
+    const totalCarritoVal = itemsCarrito.reduce((acc, item) => {
+      const basePrice = (item.producto?.precio_descuento !== null && item.producto?.precio_descuento !== undefined)
+        ? item.producto.precio_descuento
+        : (item.producto?.precio || 0);
+      const precioUnitario = basePrice + (item.precio_extra || 0);
+      return acc + (precioUnitario * item.cantidad);
     }, 0);
 
-    const mensaje = `Hola! Quiero hacer un pedido de Travesía 🛼\n\n${lineas}\n\nTOTAL: $${totalCarrito.toLocaleString('es-CO')} COP\n\nNombre: ${nombreAlumno}\nCorreo: ${emailAlumno}`;
+    const mensaje = `Hola! Quiero hacer un pedido de Travesía 🛼\n\n${lineas}\n\nTOTAL: $${totalCarritoVal.toLocaleString('es-CO')} COP\n\nNombre: ${nombreAlumno}\nCorreo: ${emailAlumno}`;
 
     window.open(`https://wa.me/573222508676?text=${encodeURIComponent(mensaje)}`, '_blank');
   };
 
   const totalCarrito = itemsCarrito.reduce((acc, item) => {
-    const price = item.producto?.precio_descuento || item.producto?.precio || 0;
-    return acc + (price * item.cantidad);
+    const basePrice = (item.producto?.precio_descuento !== null && item.producto?.precio_descuento !== undefined)
+      ? item.producto.precio_descuento
+      : (item.producto?.precio || 0);
+    const precioUnitario = basePrice + (item.precio_extra || 0);
+    return acc + (precioUnitario * item.cantidad);
   }, 0);
 
   const isAdmin = user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase();
@@ -683,9 +698,15 @@ export default function Navbar() {
                         fontSize: '13px', margin: '0 0 4px' }}>
                         Talla: {item.talla} {item.color && `· Color: ${item.color}`}
                       </p>
+                      {item.personalizado && (
+                        <p style={{ color: '#00ff88', fontSize: '12px', margin: '2px 0',
+                          fontFamily: 'Space Grotesk' }}>
+                          ✏️ Personalizado{item.nombre_personalizacion ? `: "${item.nombre_personalizacion}"` : ''} +$4.000
+                        </p>
+                      )}
                       <p style={{ color: '#00ff88', fontFamily: 'Space Grotesk',
                         fontSize: '15px', fontWeight: 'bold', margin: '0 0 8px' }}>
-                        ${(item.producto?.precio_descuento || item.producto?.precio || 0).toLocaleString('es-CO')} COP
+                        ${((item.producto?.precio_descuento || item.producto?.precio || 0) + (item.precio_extra || 0)).toLocaleString('es-CO')} COP
                       </p>
                       {/* Controles cantidad */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>

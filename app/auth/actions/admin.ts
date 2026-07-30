@@ -213,6 +213,7 @@ export async function crearProducto(formData: FormData) {
       genero: formData.get('genero') as string || 'unisex',
       disponible: formData.get('disponible') === 'true',
       destacado: formData.get('destacado') === 'true',
+      permite_personalizacion: formData.get('permitePersonalizacion') === 'true' || formData.get('permitePersonalizacion') === 'on',
       orden: 0,
     })
     .select()

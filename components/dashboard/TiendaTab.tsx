@@ -41,6 +41,7 @@ export default function TiendaTab() {
   const [genero, setGenero] = useState<'Hombre' | 'Mujer' | 'Unisex'>('Unisex');
   const [disponible, setDisponible] = useState(true);
   const [destacado, setDestacado] = useState(false);
+  const [permitePersonalizacion, setPermitePersonalizacion] = useState(false);
 
   // Tallas form states
   const [tallaStock, setTallaStock] = useState<Record<string, { stock: number; disponible: boolean }>>({
@@ -158,6 +159,7 @@ export default function TiendaTab() {
     setGenero('Unisex');
     setDisponible(true);
     setDestacado(false);
+    setPermitePersonalizacion(false);
     setIsProductModalOpen(true);
   };
 
@@ -180,6 +182,7 @@ export default function TiendaTab() {
 
     setDisponible(p.disponible);
     setDestacado(p.nuevo); // map destacado to nuevo
+    setPermitePersonalizacion(p.permite_personalizacion || false);
     setIsProductModalOpen(true);
   };
 
@@ -203,7 +206,8 @@ export default function TiendaTab() {
           categoria_id: selectedCategoriaId || null,
           disponible,
           nuevo: destacado,
-          genero: genero.toLowerCase()
+          genero: genero.toLowerCase(),
+          permite_personalizacion: permitePersonalizacion
         };
         const { error } = await supabase
           .from('productos')
@@ -226,6 +230,7 @@ export default function TiendaTab() {
         formData.append('genero', genero.toLowerCase());
         formData.append('disponible', disponible.toString());
         formData.append('destacado', destacado.toString());
+        formData.append('permitePersonalizacion', permitePersonalizacion ? 'true' : 'false');
 
         const resultado = await crearProducto(formData);
         if (resultado.error) {
@@ -1017,26 +1022,42 @@ export default function TiendaTab() {
                 </div>
               </div>
 
-              <div className="flex gap-8 pt-4 border-t border-white/10">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={disponible}
-                    onChange={(e) => setDisponible(e.target.checked)}
-                    className="w-4 h-4 rounded border-white/20 accent-neon-green"
-                  />
-                  <span className="text-[10px] uppercase">Disponible para Venta</span>
-                </label>
+              <div className="flex flex-col gap-4 pt-4 border-t border-white/10">
+                <div className="flex gap-8">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={disponible}
+                      onChange={(e) => setDisponible(e.target.checked)}
+                      className="w-4 h-4 rounded border-white/20 accent-neon-green"
+                    />
+                    <span className="text-[10px] uppercase">Disponible para Venta</span>
+                  </label>
 
-                <label className="flex items-center gap-3 cursor-pointer">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={destacado}
+                      onChange={(e) => setDestacado(e.target.checked)}
+                      className="w-4 h-4 rounded border-white/20 accent-neon-green"
+                    />
+                    <span className="text-[10px] uppercase">Marcar como Nuevo / Destacado</span>
+                  </label>
+                </div>
+
+                {/* Toggle personalización */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <input
                     type="checkbox"
-                    checked={destacado}
-                    onChange={(e) => setDestacado(e.target.checked)}
+                    id="permitePersonalizacion"
+                    checked={permitePersonalizacion}
+                    onChange={(e) => setPermitePersonalizacion(e.target.checked)}
                     className="w-4 h-4 rounded border-white/20 accent-neon-green"
                   />
-                  <span className="text-[10px] uppercase">Marcar como Nuevo / Destacado</span>
-                </label>
+                  <label htmlFor="permitePersonalizacion" style={{ color: '#aaa', fontFamily: 'Space Grotesk', fontSize: '13px', cursor: 'pointer' }} className="uppercase">
+                    ¿Permite personalización? (+$4.000 COP)
+                  </label>
+                </div>
               </div>
 
               <button
