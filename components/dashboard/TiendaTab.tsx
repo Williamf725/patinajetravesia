@@ -64,7 +64,24 @@ export default function TiendaTab() {
     setLoading(true);
     try {
       // Fetch categories
-      const { data: catData } = await supabase.from('categorias').select('*').order('nombre');
+      let { data: catData } = await supabase.from('categorias').select('*').order('nombre');
+
+      const hasLicras = catData?.some(cat => cat.slug === 'licras');
+      const hasLicraPersonalizada = catData?.some(cat => cat.slug === 'licras-personalizadas');
+
+      if (catData && (!hasLicras || !hasLicraPersonalizada)) {
+        const toInsert = [];
+        if (!hasLicras) {
+          toInsert.push({ nombre: 'Licras(uniforme enterizo)', slug: 'licras' });
+        }
+        if (!hasLicraPersonalizada) {
+          toInsert.push({ nombre: 'Licra personalizada(uniforme enterizo pero con el nombre en la espalda)', slug: 'licras-personalizadas' });
+        }
+        await supabase.from('categorias').insert(toInsert);
+        const { data: refetched } = await supabase.from('categorias').select('*').order('nombre');
+        catData = refetched;
+      }
+
       const filteredCats = (catData || []).filter(cat => {
         const slug = cat.slug?.toLowerCase() || '';
         const name = cat.nombre?.toLowerCase() || '';
