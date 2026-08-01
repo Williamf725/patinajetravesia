@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import Link from 'next/link';
 
 export default function HeroClient() {
   return (
@@ -23,14 +24,12 @@ export default function HeroClient() {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, delay: 0.6 }}
         >
-          <a
-            href="https://wa.me/573222508676?text=Hola,%20quiero%20unirme%20al%20Club%20de%20Patinaje%20Travesía"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="btn-tape inline-block text-base md:text-xl mt-2 px-6 py-2.5"
+          <Link
+            href="/registro"
+            className="btn-tape inline-block text-base md:text-xl mt-2 px-6 py-2.5 text-center"
           >
             ÚNETE AL PARCHE
-          </a>
+          </Link>
         </motion.div>
       </div>
 
