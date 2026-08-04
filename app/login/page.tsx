@@ -84,7 +84,13 @@ export default function LoginPage() {
           <SubmitButton />
         </form>
 
-        <div className="mt-8 text-center">
+        <div className="mt-6 text-center">
+          <Link href="/auth/recuperar" className="font-mono text-[10px] text-white/40 uppercase hover:text-neon-green hover:underline">
+            ¿Olvidaste tu contraseña?
+          </Link>
+        </div>
+
+        <div className="mt-4 text-center border-t border-white/10 pt-4">
            <p className="font-mono text-[10px] text-white/40 uppercase">
              ¿AÚN NO TIENES CUENTA? <Link href="/registro" className="text-neon-green hover:underline">REGÍSTRATE AQUÍ</Link>
            </p>

@@ -4,7 +4,8 @@ import { revalidatePath } from 'next/cache'
 import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { headers } from 'next/headers'
-import { enviarBienvenida } from '@/lib/email/resend'
+import { enviarCorreo } from '@/lib/email/mailer'
+import { plantillaBienvenida } from '@/lib/email/plantillas'
 
 export async function loginAction(_prevState: unknown, formData: FormData) {
   const email = formData.get('email') as string
@@ -141,11 +142,11 @@ export async function registrarAlumno(_prevState: unknown, formData: FormData) {
   }
 
   // 3. Send Welcome Email
-  try {
-    await enviarBienvenida(nombre, email)
-  } catch (e) {
-    console.error('Failed to send welcome email:', e)
-  }
+  enviarCorreo({
+    para: email,
+    asunto: '¡Bienvenido al Club Travesía! 🛼',
+    html: plantillaBienvenida(nombre),
+  }).catch(err => console.error('Error enviando bienvenida:', err))
 
   revalidatePath('/', 'layout')
   revalidatePath('/portal')

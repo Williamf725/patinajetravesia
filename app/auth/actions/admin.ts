@@ -213,6 +213,7 @@ export async function crearProducto(formData: FormData) {
       genero: formData.get('genero') as string || 'unisex',
       disponible: formData.get('disponible') === 'true',
       destacado: formData.get('destacado') === 'true',
+      permite_personalizacion: formData.get('permitePersonalizacion') === 'true' || formData.get('permitePersonalizacion') === 'on',
       orden: 0,
     })
     .select()
@@ -226,4 +227,48 @@ export async function crearProducto(formData: FormData) {
   revalidatePath('/dashboard')
   revalidatePath('/tienda')
   return { success: true, producto: data }
+}
+
+export async function guardarFotoProducto(productoId: string, url: string, alt: string) {
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user || user.email !== 'clubdepatinajetravesia@gmail.com') {
+    return { error: 'No autorizado' }
+  }
+
+  // Get existing photos of the product to calculate the order & whether it's primary
+  const { data: fotosExistentes, error: queryError } = await supabase
+    .from('producto_fotos')
+    .select('*')
+    .eq('producto_id', productoId)
+
+  if (queryError) {
+    console.error('Error fetching existing photos:', queryError.message)
+    return { error: queryError.message }
+  }
+
+  const order = fotosExistentes ? fotosExistentes.length : 0
+  const isPrincipal = order === 0
+
+  const { data, error } = await supabase
+    .from('producto_fotos')
+    .insert({
+      producto_id: productoId,
+      url: url,
+      alt: alt,
+      orden: order,
+      es_principal: isPrincipal
+    })
+    .select()
+    .single()
+
+  if (error) {
+    console.error('Error guardando foto:', error.code, error.message)
+    return { error: error.message }
+  }
+
+  revalidatePath('/dashboard')
+  revalidatePath('/tienda')
+  return { success: true, foto: data }
 }

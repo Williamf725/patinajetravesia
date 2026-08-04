@@ -4,7 +4,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { Categoria, Producto, ProductoFoto, Pedido } from '@/types/database';
 import { getSignaturaProducto } from '@/app/auth/actions/cloudinary';
-import { crearProducto } from '@/app/auth/actions/admin';
+import { crearProducto, guardarFotoProducto } from '@/app/auth/actions/admin';
 import { toast } from 'sonner';
 import { ShoppingBag, CreditCard, Plus, Edit2, Trash2, Image as ImageIcon, Layers, Palette, Eye, ArrowLeft, ArrowRight, Star, Check } from 'lucide-react';
 
@@ -41,6 +41,7 @@ export default function TiendaTab() {
   const [genero, setGenero] = useState<'Hombre' | 'Mujer' | 'Unisex'>('Unisex');
   const [disponible, setDisponible] = useState(true);
   const [destacado, setDestacado] = useState(false);
+  const [permitePersonalizacion, setPermitePersonalizacion] = useState(false);
 
   // Tallas form states
   const [tallaStock, setTallaStock] = useState<Record<string, { stock: number; disponible: boolean }>>({
@@ -64,8 +65,33 @@ export default function TiendaTab() {
     setLoading(true);
     try {
       // Fetch categories
-      const { data: catData } = await supabase.from('categorias').select('*').order('nombre');
-      setCategorias((catData || []) as Categoria[]);
+      let { data: catData } = await supabase.from('categorias').select('*').order('nombre');
+
+      const hasLicras = catData?.some(cat => cat.slug === 'licras');
+      const hasLicraPersonalizada = catData?.some(cat => cat.slug === 'licras-personalizadas');
+
+      if (catData && (!hasLicras || !hasLicraPersonalizada)) {
+        const toInsert = [];
+        if (!hasLicras) {
+          toInsert.push({ nombre: 'Licras(uniforme enterizo)', slug: 'licras' });
+        }
+        if (!hasLicraPersonalizada) {
+          toInsert.push({ nombre: 'Licra personalizada(uniforme enterizo pero con el nombre en la espalda)', slug: 'licras-personalizadas' });
+        }
+        await supabase.from('categorias').insert(toInsert);
+        const { data: refetched } = await supabase.from('categorias').select('*').order('nombre');
+        catData = refetched;
+      }
+
+      const filteredCats = (catData || []).filter(cat => {
+        const slug = cat.slug?.toLowerCase() || '';
+        const name = cat.nombre?.toLowerCase() || '';
+        return !slug.includes('sudadera') &&
+               !slug.includes('pantalon') &&
+               !name.includes('sudadera') &&
+               !name.includes('pantalon');
+      });
+      setCategorias(filteredCats as Categoria[]);
 
       // Fetch products
       const { data: prodData } = await supabase
@@ -133,6 +159,7 @@ export default function TiendaTab() {
     setGenero('Unisex');
     setDisponible(true);
     setDestacado(false);
+    setPermitePersonalizacion(false);
     setIsProductModalOpen(true);
   };
 
@@ -155,6 +182,7 @@ export default function TiendaTab() {
 
     setDisponible(p.disponible);
     setDestacado(p.nuevo); // map destacado to nuevo
+    setPermitePersonalizacion(p.permite_personalizacion || false);
     setIsProductModalOpen(true);
   };
 
@@ -178,7 +206,8 @@ export default function TiendaTab() {
           categoria_id: selectedCategoriaId || null,
           disponible,
           nuevo: destacado,
-          genero: genero.toLowerCase()
+          genero: genero.toLowerCase(),
+          permite_personalizacion: permitePersonalizacion
         };
         const { error } = await supabase
           .from('productos')
@@ -201,6 +230,7 @@ export default function TiendaTab() {
         formData.append('genero', genero.toLowerCase());
         formData.append('disponible', disponible.toString());
         formData.append('destacado', destacado.toString());
+        formData.append('permitePersonalizacion', permitePersonalizacion ? 'true' : 'false');
 
         const resultado = await crearProducto(formData);
         if (resultado.error) {
@@ -248,7 +278,7 @@ export default function TiendaTab() {
     }
   };
 
-  // Upload Photo directly to Cloudinary folder products/[slug]
+  // Upload Photo directly to Cloudinary folder products/[slug] and save to DB via Server Action
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || !managingPhotosProduct) return;
@@ -273,18 +303,11 @@ export default function TiendaTab() {
         const result = await response.json();
         if (!response.ok) throw new Error(result.error?.message || 'Error uploading file');
 
-        // Insert into product_fotos
-        const { error: dbError } = await supabase
-          .from('producto_fotos')
-          .insert({
-            producto_id: managingPhotosProduct.id,
-            url: result.secure_url,
-            alt: file.name,
-            orden: (managingPhotosProduct.fotos?.length || 0) + i,
-            es_principal: (managingPhotosProduct.fotos?.length || 0) === 0 && i === 0
-          });
-
-        if (dbError) throw dbError;
+        // Insert via Server Action guardarFotoProducto
+        const saveResult = await guardarFotoProducto(managingPhotosProduct.id, result.secure_url, file.name);
+        if (saveResult.error) {
+          throw new Error(saveResult.error);
+        }
       } catch (err) {
         console.error(err);
         toast.error(`Error al subir ${file.name}`);
@@ -999,26 +1022,42 @@ export default function TiendaTab() {
                 </div>
               </div>
 
-              <div className="flex gap-8 pt-4 border-t border-white/10">
-                <label className="flex items-center gap-3 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={disponible}
-                    onChange={(e) => setDisponible(e.target.checked)}
-                    className="w-4 h-4 rounded border-white/20 accent-neon-green"
-                  />
-                  <span className="text-[10px] uppercase">Disponible para Venta</span>
-                </label>
+              <div className="flex flex-col gap-4 pt-4 border-t border-white/10">
+                <div className="flex gap-8">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={disponible}
+                      onChange={(e) => setDisponible(e.target.checked)}
+                      className="w-4 h-4 rounded border-white/20 accent-neon-green"
+                    />
+                    <span className="text-[10px] uppercase">Disponible para Venta</span>
+                  </label>
 
-                <label className="flex items-center gap-3 cursor-pointer">
+                  <label className="flex items-center gap-3 cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={destacado}
+                      onChange={(e) => setDestacado(e.target.checked)}
+                      className="w-4 h-4 rounded border-white/20 accent-neon-green"
+                    />
+                    <span className="text-[10px] uppercase">Marcar como Nuevo / Destacado</span>
+                  </label>
+                </div>
+
+                {/* Toggle personalización */}
+                <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
                   <input
                     type="checkbox"
-                    checked={destacado}
-                    onChange={(e) => setDestacado(e.target.checked)}
+                    id="permitePersonalizacion"
+                    checked={permitePersonalizacion}
+                    onChange={(e) => setPermitePersonalizacion(e.target.checked)}
                     className="w-4 h-4 rounded border-white/20 accent-neon-green"
                   />
-                  <span className="text-[10px] uppercase">Marcar como Nuevo / Destacado</span>
-                </label>
+                  <label htmlFor="permitePersonalizacion" style={{ color: '#aaa', fontFamily: 'Space Grotesk', fontSize: '13px', cursor: 'pointer' }} className="uppercase">
+                    ¿Permite personalización? (+$4.000 COP)
+                  </label>
+                </div>
               </div>
 
               <button
@@ -1032,13 +1071,47 @@ export default function TiendaTab() {
         </div>
       )}
 
-      {/* photo manager modal */}
+      {/* photo manager modal — exact same style with internal scroll, centered, blurred backdrop */}
       {managingPhotosProduct && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
-          <div className="relative w-full max-w-2xl bg-black border border-white/20 p-8 text-left max-h-[90vh] overflow-y-auto">
+        <div
+          onClick={() => setManagingPhotosProduct(null)}
+          style={{
+            position: 'fixed', inset: 0,
+            background: 'rgba(0,0,0,0.7)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 200,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '16px',
+            overflowY: 'auto',
+          }}
+        >
+          {/* Contenido del modal — detiene propagación del click */}
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: '#111',
+              border: '2px solid #333',
+              borderRadius: '16px',
+              padding: '24px',
+              width: '100%',
+              maxWidth: '540px',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              position: 'relative',
+              margin: 'auto',
+            }}
+          >
+            {/* Botón X para cerrar */}
             <button
               onClick={() => setManagingPhotosProduct(null)}
-              className="absolute top-4 right-4 text-white/40 hover:text-white font-mono text-xl"
+              style={{
+                position: 'sticky', top: 0, float: 'right',
+                background: 'rgba(255,255,255,0.1)', border: 'none',
+                color: '#fff', width: '32px', height: '32px',
+                borderRadius: '50%', cursor: 'pointer', fontSize: '18px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                zIndex: 10
+              }}
             >
               ✕
             </button>
@@ -1046,7 +1119,7 @@ export default function TiendaTab() {
             <h3 className="font-anton text-2xl uppercase tracking-wider mb-2 text-neon-green">GESTIONAR FOTOS</h3>
             <p className="text-[10px] text-white/40 uppercase mb-6">Subir y reordenar fotos de: {managingPhotosProduct.nombre}</p>
 
-            <div className="space-y-6">
+            <div className="space-y-6 clear-both">
               {/* Drag and drop style Area */}
               <div className="border-2 border-dashed border-white/20 p-8 text-center relative hover:border-white/40 transition-colors">
                 <input
@@ -1061,7 +1134,7 @@ export default function TiendaTab() {
               </div>
 
               {/* Photos grid */}
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                 {managingPhotosProduct.fotos && managingPhotosProduct.fotos.length > 0 ? (
                   [...managingPhotosProduct.fotos]
                     .sort((a, b) => a.orden - b.orden)
@@ -1122,13 +1195,47 @@ export default function TiendaTab() {
         </div>
       )}
 
-      {/* tallas manager modal */}
+      {/* tallas manager modal — exact same style with internal scroll, centered, blurred backdrop */}
       {managingTallasProduct && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
-          <div className="relative w-full max-w-lg bg-black border border-white/20 p-8 text-left max-h-[90vh] overflow-y-auto">
+        <div
+          onClick={() => setManagingTallasProduct(null)}
+          style={{
+            position: 'fixed', inset: 0,
+            background: 'rgba(0,0,0,0.7)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 200,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '16px',
+            overflowY: 'auto',
+          }}
+        >
+          {/* Contenido del modal — detiene propagación del click */}
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: '#111',
+              border: '2px solid #333',
+              borderRadius: '16px',
+              padding: '24px',
+              width: '100%',
+              maxWidth: '540px',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              position: 'relative',
+              margin: 'auto',
+            }}
+          >
+            {/* Botón X para cerrar */}
             <button
               onClick={() => setManagingTallasProduct(null)}
-              className="absolute top-4 right-4 text-white/40 hover:text-white font-mono text-xl"
+              style={{
+                position: 'sticky', top: 0, float: 'right',
+                background: 'rgba(255,255,255,0.1)', border: 'none',
+                color: '#fff', width: '32px', height: '32px',
+                borderRadius: '50%', cursor: 'pointer', fontSize: '18px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                zIndex: 10
+              }}
             >
               ✕
             </button>
@@ -1136,7 +1243,7 @@ export default function TiendaTab() {
             <h3 className="font-anton text-2xl uppercase tracking-wider mb-2 text-neon-green">GESTIONAR TALLAS</h3>
             <p className="text-[10px] text-white/40 uppercase mb-6">Configurar disponibilidad y stock de: {managingTallasProduct.nombre}</p>
 
-            <div className="space-y-6">
+            <div className="space-y-6 clear-both">
               {/* Predefined Tallas list */}
               <div className="space-y-4">
                 {Object.entries(tallaStock).map(([talla, detail]) => (
@@ -1210,13 +1317,47 @@ export default function TiendaTab() {
         </div>
       )}
 
-      {/* colores manager modal */}
+      {/* colores manager modal — exact same style with internal scroll, centered, blurred backdrop */}
       {managingColoresProduct && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
-          <div className="relative w-full max-w-lg bg-black border border-white/20 p-8 text-left max-h-[90vh] overflow-y-auto">
+        <div
+          onClick={() => setManagingColoresProduct(null)}
+          style={{
+            position: 'fixed', inset: 0,
+            background: 'rgba(0,0,0,0.7)',
+            backdropFilter: 'blur(4px)',
+            zIndex: 200,
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            padding: '16px',
+            overflowY: 'auto',
+          }}
+        >
+          {/* Contenido del modal — detiene propagación del click */}
+          <div
+            onClick={e => e.stopPropagation()}
+            style={{
+              background: '#111',
+              border: '2px solid #333',
+              borderRadius: '16px',
+              padding: '24px',
+              width: '100%',
+              maxWidth: '540px',
+              maxHeight: '90vh',
+              overflowY: 'auto',
+              position: 'relative',
+              margin: 'auto',
+            }}
+          >
+            {/* Botón X para cerrar */}
             <button
               onClick={() => setManagingColoresProduct(null)}
-              className="absolute top-4 right-4 text-white/40 hover:text-white font-mono text-xl"
+              style={{
+                position: 'sticky', top: 0, float: 'right',
+                background: 'rgba(255,255,255,0.1)', border: 'none',
+                color: '#fff', width: '32px', height: '32px',
+                borderRadius: '50%', cursor: 'pointer', fontSize: '18px',
+                display: 'flex', alignItems: 'center', justifyContent: 'center',
+                zIndex: 10
+              }}
             >
               ✕
             </button>
@@ -1224,7 +1365,7 @@ export default function TiendaTab() {
             <h3 className="font-anton text-2xl uppercase tracking-wider mb-2 text-neon-green">GESTIONAR COLORES</h3>
             <p className="text-[10px] text-white/40 uppercase mb-6">Colores configurados para: {managingColoresProduct.nombre}</p>
 
-            <div className="space-y-6">
+            <div className="space-y-6 clear-both">
               {/* Color addition section */}
               <div className="bg-white/5 border border-white/10 p-4 space-y-4">
                 <h4 className="font-anton text-sm tracking-wider">AÑADIR NUEVO COLOR</h4>

@@ -1,12 +1,9 @@
 'use client';
 
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useSearchParams, useRouter } from 'next/navigation';
-import { Categoria, Producto, CarritoItem } from '@/types/database';
-import { createClient } from '@/lib/supabase/client';
-import TiendaNavbar from './TiendaNavbar';
-import TiendaCartDrawer from './TiendaCartDrawer';
+import { Categoria, Producto } from '@/types/database';
 
 interface TiendaClientProps {
   initialUser: { id: string; email?: string | null } | null;
@@ -16,34 +13,14 @@ interface TiendaClientProps {
 }
 
 export default function TiendaClient({
-  initialUser,
-  alumnoName,
   categorias,
   productos
 }: TiendaClientProps) {
   const searchParams = useSearchParams();
   const router = useRouter();
-  const supabase = createClient();
 
-  const [user, setUser] = useState(initialUser);
   const [selectedCategoria, setSelectedCategoria] = useState<string>('todos');
-  const [selectedGenero, setSelectedGenero] = useState<'todos' | 'hombre' | 'mujer'>('todos');
-
-  // Cart state
-  const [cartItems, setCartItems] = useState<CarritoItem[]>([]);
-  const [isCartOpen, setIsCartOpen] = useState(false);
   const [hoveredProduct, setHoveredProduct] = useState<string | null>(null);
-
-  // Sync user status on mount
-  useEffect(() => {
-    const getUser = async () => {
-      const { data: { user: currentUser } } = await supabase.auth.getUser();
-      if (currentUser) {
-        setUser(currentUser);
-      }
-    };
-    getUser();
-  }, [supabase]);
 
   // Set category from URL if present
   useEffect(() => {
@@ -53,35 +30,6 @@ export default function TiendaClient({
     }
   }, [searchParams]);
 
-  // Load cart items from Supabase
-  const loadCart = useCallback(async () => {
-    if (!user) return;
-    try {
-      const { data, error } = await supabase
-        .from('carrito')
-        .select(`
-          *,
-          producto:productos(
-            *,
-            fotos:producto_fotos(*)
-          )
-        `)
-        .eq('user_id', user.id);
-
-      if (error) throw error;
-      setCartItems((data || []) as CarritoItem[]);
-    } catch (err) {
-      console.error('Error loading cart:', err);
-    }
-  }, [user, supabase]);
-
-  useEffect(() => {
-    loadCart();
-  }, [loadCart]);
-
-  // Total cart count
-  const cartCount = cartItems.reduce((acc, item) => acc + item.cantidad, 0);
-
   // Filter products
   const filteredProductos = productos.filter((prod) => {
     // Category filter
@@ -89,22 +37,11 @@ export default function TiendaClient({
       const slugMatch = prod.categoria?.slug === selectedCategoria || prod.categoria?.nombre.toLowerCase() === selectedCategoria;
       if (!slugMatch) return false;
     }
-
-    // Gender filter
-    if (selectedGenero !== 'todos') {
-      const txt = `${prod.nombre} ${prod.descripcion || ''}`.toLowerCase();
-      const isMatch = txt.includes(selectedGenero) || txt.includes('unisex');
-      if (!isMatch) return false;
-    }
-
     return true;
   });
 
   return (
     <div className="min-h-screen bg-black text-white font-space antialiased selection:bg-white selection:text-black">
-      {/* Navbar */}
-      <TiendaNavbar cartCount={cartCount} onCartOpen={() => setIsCartOpen(true)} />
-
       {/* Hero Header */}
       <header className="pt-32 pb-16 px-6 md:px-12 text-center max-w-4xl mx-auto space-y-4">
         <span className="font-mono text-[10px] text-white/40 uppercase tracking-[0.4em] block">Colección Oficial</span>
@@ -114,50 +51,59 @@ export default function TiendaClient({
         </p>
       </header>
 
-      {/* Filter bar - Minimalist Apple style */}
-      <div className="border-y border-white/5 py-4 mb-12 overflow-x-auto scrollbar-none">
-        <div className="max-w-7xl mx-auto px-6 md:px-12 flex items-center justify-between gap-8 min-w-max">
-          {/* Categories filter */}
-          <div className="flex items-center gap-6 text-xs uppercase tracking-widest font-mono">
-            <button
-              onClick={() => { setSelectedCategoria('todos'); router.push('/tienda'); }}
-              className={`pb-1 transition-colors ${selectedCategoria === 'todos' ? 'text-neon-green border-b border-neon-green' : 'text-white/40 hover:text-white'}`}
-            >
-              Todos
-            </button>
-            {categorias.map((cat) => (
-              <button
-                key={cat.id}
-                onClick={() => { setSelectedCategoria(cat.slug); router.push(`/tienda?categoria=${cat.slug}`); }}
-                className={`pb-1 transition-colors ${selectedCategoria === cat.slug ? 'text-neon-green border-b border-neon-green' : 'text-white/40 hover:text-white'}`}
-              >
-                {cat.nombre}
-              </button>
-            ))}
-          </div>
+      {/* Mostrar filtros solo si hay más de una categoría */}
+      {categorias && categorias.length > 1 && (
+        <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '32px' }} className="max-w-7xl mx-auto px-6 md:px-12">
+          <button
+            onClick={() => { setSelectedCategoria('todos'); router.push('/tienda'); }}
+            style={{
+              background: selectedCategoria === 'todos' ? '#00ff88' : 'transparent',
+              color: selectedCategoria === 'todos' ? '#000' : '#fff',
+              border: '1px solid #333',
+              padding: '8px 20px',
+              fontFamily: 'Space Grotesk',
+              fontSize: '13px',
+              letterSpacing: '2px',
+              cursor: 'pointer',
+              borderRadius: '4px',
+            }}>
+            TODOS
+          </button>
 
-          {/* Gender Filter */}
-          <div className="flex items-center gap-6 text-xs uppercase tracking-widest font-mono">
-            {(['todos', 'hombre', 'mujer'] as const).map((gen) => (
-              <button
-                key={gen}
-                onClick={() => setSelectedGenero(gen)}
-                className={`pb-1 transition-colors ${selectedGenero === gen ? 'text-white font-bold' : 'text-white/40 hover:text-white'}`}
-              >
-                {gen === 'todos' ? 'Todo Género' : gen}
-              </button>
-            ))}
-          </div>
+          {categorias.map(cat => (
+            <button
+              key={cat.id}
+              onClick={() => { setSelectedCategoria(cat.slug); router.push(`/tienda?categoria=${cat.slug}`); }}
+              style={{
+                background: selectedCategoria === cat.slug ? '#00ff88' : 'transparent',
+                color: selectedCategoria === cat.slug ? '#000' : '#fff',
+                border: '1px solid #333',
+                padding: '8px 20px',
+                fontFamily: 'Space Grotesk',
+                fontSize: '13px',
+                letterSpacing: '2px',
+                cursor: 'pointer',
+                borderRadius: '4px',
+              }}>
+              {cat.nombre.toUpperCase()}
+            </button>
+          ))}
         </div>
-      </div>
+      )}
 
       {/* Products Grid */}
       <main className="max-w-7xl mx-auto px-6 md:px-12 pb-24">
-        {filteredProductos.length === 0 ? (
+        {productos.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: '80px 0' }}>
+            <p style={{ color: '#555', fontFamily: 'Space Grotesk', fontSize: '18px' }}>
+              Próximamente nuevos productos
+            </p>
+          </div>
+        ) : filteredProductos.length === 0 ? (
           <div className="text-center py-20 space-y-4">
             <p className="text-white/40 uppercase tracking-widest text-sm">No se encontraron productos</p>
             <button
-              onClick={() => { setSelectedCategoria('todos'); setSelectedGenero('todos'); }}
+              onClick={() => { setSelectedCategoria('todos'); router.push('/tienda'); }}
               className="border border-white/20 px-6 py-3 text-xs uppercase tracking-widest hover:bg-white hover:text-black transition-all"
             >
               Restablecer filtros
@@ -249,16 +195,6 @@ export default function TiendaClient({
           </div>
         )}
       </main>
-
-      {/* Cart Sidebar Drawer */}
-      <TiendaCartDrawer
-        isOpen={isCartOpen}
-        onClose={() => setIsCartOpen(false)}
-        cartItems={cartItems}
-        onRefreshCart={loadCart}
-        user={user}
-        alumnoName={alumnoName}
-      />
     </div>
   );
 
