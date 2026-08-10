@@ -5,6 +5,7 @@ import TvSection from '@/components/sections/TvSection';
 import EntrenamientosSection from '@/components/sections/EntrenamientosSection';
 import UneteSection from '@/components/sections/UneteSection';
 import TiendaPreview from '@/components/sections/TiendaPreview';
+import PlanesSection from '@/components/sections/PlanesSection';
 
 export default function Home() {
   return (
@@ -21,6 +22,10 @@ export default function Home() {
       {/* Secciones del home */}
       <EsenciaSection />
       <TvSection />
+
+      {/* Sección planes y costos */}
+      <PlanesSection />
+
       <EntrenamientosSection />
       <UneteSection />
     </>
