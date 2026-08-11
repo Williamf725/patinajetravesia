@@ -3,10 +3,11 @@
 import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 import { Plan, Inscripcion, Alumno } from '@/types/database';
-import { selectPlan, cambiarPlan } from '@/app/auth/actions/portal';
+import { selectPlan, cambiarPlan, guardarRenovacion } from '@/app/auth/actions/portal';
 import { getSignaturaComprobante } from '@/app/auth/actions/cloudinary';
 import { createClient } from '@/lib/supabase/client';
-import { CheckCircle2, Clock, XCircle, Info, AlertTriangle, CreditCard, Copy, Upload, RefreshCw } from 'lucide-react';
+import { CheckCircle2, Clock, XCircle, Info, CreditCard, Copy, Upload, RefreshCw } from 'lucide-react';
+import { calcularEstadoPlan } from '@/lib/planes';
 
 interface Props {
   alumno: Alumno;
@@ -14,13 +15,83 @@ interface Props {
   inscripcionActual: Inscripcion | null;
 }
 
+interface SubirComprobanteProps {
+  onSubida: (url: string) => Promise<void>;
+}
+
+function SubirComprobante({ onSubida }: SubirComprobanteProps) {
+  const [subiendo, setSubiendo] = useState(false);
+  const [errorLocal, setErrorLocal] = useState<string | null>(null);
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setErrorLocal(null);
+    const formatosValidos = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'image/gif', 'application/pdf'];
+
+    if (!formatosValidos.includes(file.type)) {
+      setErrorLocal('Formato no válido. Usa JPG, PNG, WEBP, GIF o PDF');
+      return;
+    }
+
+    if (file.size > 10 * 1024 * 1024) {
+      setErrorLocal('El archivo no puede superar 10MB');
+      return;
+    }
+
+    setSubiendo(true);
+    try {
+      const { signature, timestamp, apiKey, cloudName, folder } = await getSignaturaComprobante();
+
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('api_key', apiKey);
+      formData.append('timestamp', timestamp.toString());
+      formData.append('signature', signature);
+      formData.append('folder', folder);
+
+      const response = await fetch(
+        `https://api.cloudinary.com/v1_1/${cloudName}/auto/upload`,
+        { method: 'POST', body: formData }
+      );
+
+      const resultado = await response.json();
+      if (!response.ok) throw new Error(resultado.error?.message || 'Error al subir');
+
+      if (resultado.secure_url) {
+        await onSubida(resultado.secure_url);
+      }
+    } catch (err) {
+      console.error(err);
+      setErrorLocal(err instanceof Error ? err.message : 'Error al subir comprobante');
+    } finally {
+      setSubiendo(false);
+    }
+  };
+
+  return (
+    <div>
+      <label className="btn-tape text-xs py-3 cursor-pointer inline-flex items-center gap-2">
+        {subiendo ? 'SUBIENDO...' : 'SUBIR COMPROBANTE'}
+        <input type="file" className="hidden" accept="image/*,.pdf" onChange={handleFileChange} disabled={subiendo} />
+      </label>
+      {errorLocal && (
+        <p className="text-hot-pink font-mono text-[10px] uppercase mt-2">{errorLocal}</p>
+      )}
+    </div>
+  );
+}
+
 export default function MiPlanTab({ alumno, planes, inscripcionActual }: Props) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [showPlanChange, setShowPlanChange] = useState(false);
   const [uploadingComprobante, setUploadingComprobante] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [planRenovacion, setPlanRenovacion] = useState<Plan | null>(null);
 
   const supabase = createClient();
+  const estadoPlan = calcularEstadoPlan(inscripcionActual);
 
   const copyToClipboard = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -157,6 +228,120 @@ export default function MiPlanTab({ alumno, planes, inscripcionActual }: Props) 
           <Info className="text-neon-green" /> ESTADO DE MI PLAN
         </h2>
 
+        {/* Estado: pocas clases */}
+        {estadoPlan === 'pocas_clases' && (
+          <div style={{ background: 'rgba(255,165,0,0.1)', border: '3px solid orange',
+            padding: '20px', marginBottom: '24px' }}>
+            <p style={{ color: 'orange', fontFamily: 'Anton', fontSize: '20px', margin: '0 0 8px' }}>
+              ⚡ TE QUEDA 1 SOLA CLASE
+            </p>
+            <p style={{ color: '#aaa', fontFamily: 'Space Grotesk', fontSize: '14px', margin: 0 }}>
+              Renueva tu plan para seguir patinando sin interrupciones.
+            </p>
+          </div>
+        )}
+
+        {/* Estado: agotado */}
+        {estadoPlan === 'agotado' && (
+          <div style={{ background: 'rgba(255,45,120,0.1)', border: '3px solid #ff2d78',
+            padding: '20px', marginBottom: '24px' }}>
+            <p style={{ color: '#ff2d78', fontFamily: 'Anton', fontSize: '20px', margin: '0 0 8px' }}>
+              🔴 TUS CLASES SE AGOTARON
+            </p>
+            <p style={{ color: '#aaa', fontFamily: 'Space Grotesk', fontSize: '14px', margin: 0 }}>
+              Has usado todas tus clases de este plan. Renueva para continuar.
+            </p>
+          </div>
+        )}
+
+        {/* Estado: renovación pendiente */}
+        {estadoPlan === 'renovacion_pendiente' && (
+          <div style={{ background: 'rgba(0,255,136,0.05)', border: '2px solid #00ff88',
+            padding: '20px', marginBottom: '24px' }}>
+            <p style={{ color: '#00ff88', fontFamily: 'Anton', fontSize: '20px', margin: '0 0 8px' }}>
+              ⏳ RENOVACIÓN EN PROCESO
+            </p>
+            <p style={{ color: '#aaa', fontFamily: 'Space Grotesk', fontSize: '14px', margin: 0 }}>
+              Tu comprobante fue enviado. El admin confirmará tu renovación pronto.
+            </p>
+          </div>
+        )}
+
+        {/* Renovación de plan */}
+        {(estadoPlan === 'agotado' || estadoPlan === 'pocas_clases') && (
+          <div style={{ background: '#111', border: '2px solid #333', padding: '24px', marginBottom: '24px' }}>
+            <h3 style={{ color: '#fff', fontFamily: 'Anton', fontSize: '22px',
+              margin: '0 0 20px', letterSpacing: '1px' }}>
+              RENOVAR MI PLAN
+            </h3>
+
+            {/* Selector de planes */}
+            <div style={{ display: 'grid', gap: '12px', marginBottom: '24px' }}>
+              {planes.map(plan => (
+                <button
+                  key={plan.id}
+                  onClick={() => setPlanRenovacion(plan)}
+                  style={{
+                    background: planRenovacion?.id === plan.id ? 'rgba(0,255,136,0.1)' : '#0a0a0a',
+                    border: `2px solid ${planRenovacion?.id === plan.id ? '#00ff88' : '#333'}`,
+                    color: '#fff', padding: '16px', cursor: 'pointer',
+                    fontFamily: 'Space Grotesk', fontSize: '14px', textAlign: 'left',
+                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                    width: '100%',
+                  }}>
+                  <span>{plan.nombre} — {plan.clases_incluidas} clases</span>
+                  <span style={{ color: '#00ff88', fontFamily: 'Anton', fontSize: '18px' }}>
+                    ${plan.precio.toLocaleString('es-CO')}
+                  </span>
+                </button>
+              ))}
+            </div>
+
+            {/* Datos de pago */}
+            {planRenovacion && (
+              <div style={{ background: '#0a0a0a', border: '1px solid #333',
+                padding: '16px', marginBottom: '20px' }}>
+                <p style={{ color: '#aaa', fontFamily: 'Space Grotesk',
+                  fontSize: '13px', margin: '0 0 8px' }}>
+                  Paga por Nequi a <strong style={{ color: '#fff' }}>@SPA442</strong> — A nombre de Silvia Peña
+                </p>
+                <p style={{ color: '#00ff88', fontFamily: 'Anton', fontSize: '24px', margin: 0 }}>
+                  ${planRenovacion.precio.toLocaleString('es-CO')} COP
+                </p>
+              </div>
+            )}
+
+            {/* Subida de comprobante de renovación */}
+            {planRenovacion && inscripcionActual && (
+              <div>
+                <p style={{ color: '#aaa', fontFamily: 'Space Grotesk',
+                  fontSize: '13px', margin: '0 0 12px' }}>
+                  Sube el comprobante de pago para renovar tu plan:
+                </p>
+                <SubirComprobante
+                  onSubida={async (url) => {
+                    const res = await guardarRenovacion({
+                      inscripcionId: inscripcionActual.id,
+                      nuevoPlanId: planRenovacion.id,
+                      comprobanteUrl: url,
+                    });
+                    if (res && 'success' in res && res.success) {
+                      alert('Plan renovado con éxito');
+                      window.location.reload();
+                    } else {
+                      alert('Error: ' + (res && 'error' in res ? res.error : 'Error al guardar renovación'));
+                    }
+                  }}
+                />
+                <p style={{ color: '#555', fontSize: '12px', marginTop: '8px',
+                  fontFamily: 'Space Grotesk' }}>
+                  Formatos: JPG, PNG, WEBP, PDF — Máx 10MB
+                </p>
+              </div>
+            )}
+          </div>
+        )}
+
         {inscripcionActual ? (
           <div className="bg-[#1a1a1a] border-4 border-white p-8 shadow-brutal flex flex-col md:flex-row items-center gap-8">
             <div className="flex-shrink-0">
@@ -279,14 +464,6 @@ export default function MiPlanTab({ alumno, planes, inscripcionActual }: Props) 
                       className="h-full bg-neon-green"
                     />
                   </div>
-
-                  {/* Class Alert */}
-                  {((inscripcionActual.plan?.clases_incluidas || 0) - (inscripcionActual.clases_usadas || 0)) === 1 && (
-                    <div className="p-4 bg-orange-500/20 border-l-4 border-orange-500 text-orange-500 flex items-center gap-3 animate-pulse">
-                      <AlertTriangle />
-                      <span className="font-anton uppercase text-sm md:text-base">⚠️ Te queda solo 1 clase. ¡Renueva tu plan pronto!</span>
-                    </div>
-                  )}
                 </div>
               )}
 

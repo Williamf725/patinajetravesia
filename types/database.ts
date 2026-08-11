@@ -46,6 +46,8 @@ export type Inscripcion = {
   fecha_aprobacion: string | null;
   created_at: string;
   updated_at?: string;
+  renovacion_pendiente?: boolean;
+  notificacion_pocas_clases_enviada?: boolean;
   // Join fields
   alumno?: Alumno;
   plan?: Plan;

@@ -60,12 +60,20 @@ export async function updateInscripcionEstado(id: string, estado: 'aprobado' | '
 
   if (!inscripcion) throw new Error('Inscripción no encontrada')
 
+  const updateData: Record<string, string | number | boolean | null> = {
+    estado,
+    fecha_aprobacion: estado === 'aprobado' ? new Date().toISOString() : null
+  }
+
+  if (estado === 'aprobado') {
+    updateData.clases_usadas = 0; // resetear clases usadas al renovar
+    updateData.renovacion_pendiente = false;
+    updateData.comprobante_verificado = true;
+  }
+
   const { error } = await supabase
     .from('inscripciones')
-    .update({
-      estado,
-      fecha_aprobacion: estado === 'aprobado' ? new Date().toISOString() : null
-    })
+    .update(updateData)
     .eq('id', id)
 
   if (error) throw error
