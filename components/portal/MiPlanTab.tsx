@@ -6,7 +6,7 @@ import { Plan, Inscripcion, Alumno } from '@/types/database';
 import { selectPlan, cambiarPlan, guardarRenovacion } from '@/app/auth/actions/portal';
 import { getSignaturaComprobante } from '@/app/auth/actions/cloudinary';
 import { createClient } from '@/lib/supabase/client';
-import { CheckCircle2, Clock, XCircle, Info, CreditCard, Copy, Upload, RefreshCw } from 'lucide-react';
+import { CheckCircle2, Clock, XCircle, Info, CreditCard, Copy, Upload } from 'lucide-react';
 import { calcularEstadoPlan } from '@/lib/planes';
 
 interface Props {
@@ -323,6 +323,42 @@ export default function MiPlanTab({ alumno, planes, inscripcionActual }: Props) 
                       </span>
                     </div>
                   </div>
+
+                  {/* Botones permanentes para cambiar o renovar plan */}
+                  <div style={{ display: 'flex', gap: '16px', marginBottom: '32px', flexWrap: 'wrap' }}>
+                    <button
+                      onClick={() => setShowPlanChange(!showPlanChange)}
+                      style={{
+                        background: showPlanChange ? '#ff2d78' : '#111',
+                        color: '#fff',
+                        border: `2px solid ${showPlanChange ? '#ff2d78' : '#333'}`,
+                        fontFamily: 'Anton',
+                        fontSize: '14px',
+                        padding: '12px 24px',
+                        cursor: 'pointer',
+                        letterSpacing: '1px',
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      {showPlanChange ? 'Ocultar Cambiar Plan' : 'Cambiar de Plan'}
+                    </button>
+                    <button
+                      onClick={() => setShowRenewalSection(!showRenewalSection)}
+                      style={{
+                        background: showRenewalSection ? '#00ff88' : '#111',
+                        color: showRenewalSection ? '#000' : '#fff',
+                        border: `2px solid ${showRenewalSection ? '#00ff88' : '#333'}`,
+                        fontFamily: 'Anton',
+                        fontSize: '14px',
+                        padding: '12px 24px',
+                        cursor: 'pointer',
+                        letterSpacing: '1px',
+                        textTransform: 'uppercase',
+                      }}
+                    >
+                      {showRenewalSection ? 'Ocultar Renovación' : 'Renovar mi Plan'}
+                    </button>
+                  </div>
                 </>
               );
             })()}
@@ -521,20 +557,6 @@ export default function MiPlanTab({ alumno, planes, inscripcionActual }: Props) 
                           <p className="font-anton text-xl text-white">
                             {inscripcionActual.fecha_vencimiento ? new Date(inscripcionActual.fecha_vencimiento).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : 'N/A'}
                           </p>
-                          <div className="flex flex-col gap-2 items-end">
-                            <button
-                              onClick={() => setShowPlanChange(!showPlanChange)}
-                              className="text-[10px] text-neon-green underline uppercase font-mono flex items-center gap-1 cursor-pointer"
-                            >
-                              <RefreshCw size={10} /> {showPlanChange ? 'Ocultar Cambiar Plan' : 'Cambiar Plan'}
-                            </button>
-                            <button
-                              onClick={() => setShowRenewalSection(!showRenewalSection)}
-                              className="text-[10px] text-neon-green underline uppercase font-mono flex items-center gap-1 cursor-pointer"
-                            >
-                              <RefreshCw size={10} /> {showRenewalSection ? 'Ocultar Renovación' : 'Renovar Plan'}
-                            </button>
-                          </div>
                         </div>
                       </div>
                     </div>
