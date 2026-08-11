@@ -89,6 +89,7 @@ export default function MiPlanTab({ alumno, planes, inscripcionActual }: Props) 
   const [uploadingComprobante, setUploadingComprobante] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [planRenovacion, setPlanRenovacion] = useState<Plan | null>(null);
+  const [showRenewalSection, setShowRenewalSection] = useState(false);
 
   const supabase = createClient();
   const estadoPlan = calcularEstadoPlan(inscripcionActual);
@@ -364,7 +365,7 @@ export default function MiPlanTab({ alumno, planes, inscripcionActual }: Props) 
             )}
 
             {/* Sección renovación si aplica */}
-            {(estadoPlan === 'agotado' || estadoPlan === 'pocas_clases') && (
+            {(estadoPlan === 'agotado' || estadoPlan === 'pocas_clases' || showRenewalSection) && (
               <div style={{ background: '#111', border: '2px solid #333', padding: '24px', marginBottom: '24px' }}>
                 <h3 style={{ color: '#fff', fontFamily: 'Anton', fontSize: '22px',
                   margin: '0 0 20px', letterSpacing: '1px' }}>
@@ -520,12 +521,20 @@ export default function MiPlanTab({ alumno, planes, inscripcionActual }: Props) 
                           <p className="font-anton text-xl text-white">
                             {inscripcionActual.fecha_vencimiento ? new Date(inscripcionActual.fecha_vencimiento).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : 'N/A'}
                           </p>
-                          <button
-                            onClick={() => setShowPlanChange(!showPlanChange)}
-                            className="text-[10px] text-neon-green underline uppercase font-mono flex items-center gap-1 justify-end ml-auto"
-                          >
-                            <RefreshCw size={10} /> Cambiar Plan
-                          </button>
+                          <div className="flex flex-col gap-2 items-end">
+                            <button
+                              onClick={() => setShowPlanChange(!showPlanChange)}
+                              className="text-[10px] text-neon-green underline uppercase font-mono flex items-center gap-1 cursor-pointer"
+                            >
+                              <RefreshCw size={10} /> {showPlanChange ? 'Ocultar Cambiar Plan' : 'Cambiar Plan'}
+                            </button>
+                            <button
+                              onClick={() => setShowRenewalSection(!showRenewalSection)}
+                              className="text-[10px] text-neon-green underline uppercase font-mono flex items-center gap-1 cursor-pointer"
+                            >
+                              <RefreshCw size={10} /> {showRenewalSection ? 'Ocultar Renovación' : 'Renovar Plan'}
+                            </button>
+                          </div>
                         </div>
                       </div>
                     </div>
