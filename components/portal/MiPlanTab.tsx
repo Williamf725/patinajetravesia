@@ -228,252 +228,318 @@ export default function MiPlanTab({ alumno, planes, inscripcionActual }: Props) 
           <Info className="text-neon-green" /> ESTADO DE MI PLAN
         </h2>
 
-        {/* Estado: pocas clases */}
-        {estadoPlan === 'pocas_clases' && (
-          <div style={{ background: 'rgba(255,165,0,0.1)', border: '3px solid orange',
-            padding: '20px', marginBottom: '24px' }}>
-            <p style={{ color: 'orange', fontFamily: 'Anton', fontSize: '20px', margin: '0 0 8px' }}>
-              ⚡ TE QUEDA 1 SOLA CLASE
-            </p>
-            <p style={{ color: '#aaa', fontFamily: 'Space Grotesk', fontSize: '14px', margin: 0 }}>
-              Renueva tu plan para seguir patinando sin interrupciones.
-            </p>
-          </div>
-        )}
-
-        {/* Estado: agotado */}
-        {estadoPlan === 'agotado' && (
-          <div style={{ background: 'rgba(255,45,120,0.1)', border: '3px solid #ff2d78',
-            padding: '20px', marginBottom: '24px' }}>
-            <p style={{ color: '#ff2d78', fontFamily: 'Anton', fontSize: '20px', margin: '0 0 8px' }}>
-              🔴 TUS CLASES SE AGOTARON
-            </p>
-            <p style={{ color: '#aaa', fontFamily: 'Space Grotesk', fontSize: '14px', margin: 0 }}>
-              Has usado todas tus clases de este plan. Renueva para continuar.
-            </p>
-          </div>
-        )}
-
-        {/* Estado: renovación pendiente */}
-        {estadoPlan === 'renovacion_pendiente' && (
-          <div style={{ background: 'rgba(0,255,136,0.05)', border: '2px solid #00ff88',
-            padding: '20px', marginBottom: '24px' }}>
-            <p style={{ color: '#00ff88', fontFamily: 'Anton', fontSize: '20px', margin: '0 0 8px' }}>
-              ⏳ RENOVACIÓN EN PROCESO
-            </p>
-            <p style={{ color: '#aaa', fontFamily: 'Space Grotesk', fontSize: '14px', margin: 0 }}>
-              Tu comprobante fue enviado. El admin confirmará tu renovación pronto.
-            </p>
-          </div>
-        )}
-
-        {/* Renovación de plan */}
-        {(estadoPlan === 'agotado' || estadoPlan === 'pocas_clases') && (
-          <div style={{ background: '#111', border: '2px solid #333', padding: '24px', marginBottom: '24px' }}>
-            <h3 style={{ color: '#fff', fontFamily: 'Anton', fontSize: '22px',
-              margin: '0 0 20px', letterSpacing: '1px' }}>
-              RENOVAR MI PLAN
-            </h3>
-
-            {/* Selector de planes */}
-            <div style={{ display: 'grid', gap: '12px', marginBottom: '24px' }}>
-              {planes.map(plan => (
-                <button
-                  key={plan.id}
-                  onClick={() => setPlanRenovacion(plan)}
-                  style={{
-                    background: planRenovacion?.id === plan.id ? 'rgba(0,255,136,0.1)' : '#0a0a0a',
-                    border: `2px solid ${planRenovacion?.id === plan.id ? '#00ff88' : '#333'}`,
-                    color: '#fff', padding: '16px', cursor: 'pointer',
-                    fontFamily: 'Space Grotesk', fontSize: '14px', textAlign: 'left',
-                    display: 'flex', justifyContent: 'space-between', alignItems: 'center',
-                    width: '100%',
-                  }}>
-                  <span>{plan.nombre} — {plan.clases_incluidas} clases</span>
-                  <span style={{ color: '#00ff88', fontFamily: 'Anton', fontSize: '18px' }}>
-                    ${plan.precio.toLocaleString('es-CO')}
-                  </span>
-                </button>
-              ))}
-            </div>
-
-            {/* Datos de pago */}
-            {planRenovacion && (
-              <div style={{ background: '#0a0a0a', border: '1px solid #333',
-                padding: '16px', marginBottom: '20px' }}>
-                <p style={{ color: '#aaa', fontFamily: 'Space Grotesk',
-                  fontSize: '13px', margin: '0 0 8px' }}>
-                  Paga por Nequi a <strong style={{ color: '#fff' }}>@SPA442</strong> — A nombre de Silvia Peña
-                </p>
-                <p style={{ color: '#00ff88', fontFamily: 'Anton', fontSize: '24px', margin: 0 }}>
-                  ${planRenovacion.precio.toLocaleString('es-CO')} COP
-                </p>
-              </div>
-            )}
-
-            {/* Subida de comprobante de renovación */}
-            {planRenovacion && inscripcionActual && (
-              <div>
-                <p style={{ color: '#aaa', fontFamily: 'Space Grotesk',
-                  fontSize: '13px', margin: '0 0 12px' }}>
-                  Sube el comprobante de pago para renovar tu plan:
-                </p>
-                <SubirComprobante
-                  onSubida={async (url) => {
-                    const res = await guardarRenovacion({
-                      inscripcionId: inscripcionActual.id,
-                      nuevoPlanId: planRenovacion.id,
-                      comprobanteUrl: url,
-                    });
-                    if (res && 'success' in res && res.success) {
-                      alert('Plan renovado con éxito');
-                      window.location.reload();
-                    } else {
-                      alert('Error: ' + (res && 'error' in res ? res.error : 'Error al guardar renovación'));
-                    }
-                  }}
-                />
-                <p style={{ color: '#555', fontSize: '12px', marginTop: '8px',
-                  fontFamily: 'Space Grotesk' }}>
-                  Formatos: JPG, PNG, WEBP, PDF — Máx 10MB
-                </p>
-              </div>
-            )}
-          </div>
-        )}
-
         {inscripcionActual ? (
-          <div className="bg-[#1a1a1a] border-4 border-white p-8 shadow-brutal flex flex-col md:flex-row items-center gap-8">
-            <div className="flex-shrink-0">
-              {getStatusIcon(inscripcionActual.estado)}
-            </div>
-            <div className="flex-grow text-center md:text-left">
-              <h3 className="font-anton text-4xl uppercase mb-1">
-                {inscripcionActual.plan?.nombre}
-              </h3>
-              <p className="font-mono text-xs text-white/60 uppercase tracking-widest mb-4">
-                Periodo: {inscripcionActual.mes} {inscripcionActual.anio}
+          <>
+            {/* 4. Nombre del plan siempre visible */}
+            <div style={{ marginBottom: '16px' }}>
+              <p style={{ color: '#ff2d78', fontFamily: 'Space Grotesk',
+                fontSize: '11px', letterSpacing: '4px', margin: '0 0 4px' }}>
+                PLAN ACTUAL
               </p>
+              <p style={{ color: '#fff', fontFamily: 'Anton',
+                fontSize: '22px', margin: 0, letterSpacing: '1px' }}>
+                {inscripcionActual.plan?.nombre?.toUpperCase() || ''}
+              </p>
+            </div>
 
-              {inscripcionActual.estado === 'pendiente' && (
-                <div className="space-y-4">
-                  <div className="p-4 bg-yellow-400/10 border-l-4 border-yellow-400 text-yellow-400 font-mono text-sm uppercase">
-                    Tu solicitud fue enviada. El admin confirmará tu acceso pronto.
+            {/* 2. Agregar resumen visual de clases en todos los estados */}
+            {(() => {
+              const restantes = (inscripcionActual.plan?.clases_incluidas || 0) - (inscripcionActual.clases_usadas || 0);
+              return (
+                <>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)',
+                    gap: '2px', marginBottom: '24px' }}>
+
+                    {/* Clases pagadas */}
+                    <div style={{ background: '#111', padding: '20px 16px', textAlign: 'center' }}>
+                      <p style={{ color: '#555', fontFamily: 'Space Grotesk',
+                        fontSize: '11px', letterSpacing: '3px', margin: '0 0 8px' }}>
+                        PAGADAS
+                      </p>
+                      <p style={{ color: '#fff', fontFamily: 'Anton',
+                        fontSize: '40px', margin: '0 0 4px', lineHeight: 1 }}>
+                        {inscripcionActual.plan?.clases_incluidas || 0}
+                      </p>
+                      <p style={{ color: '#555', fontFamily: 'Space Grotesk',
+                        fontSize: '12px', margin: 0 }}>
+                        clases
+                      </p>
+                    </div>
+
+                    {/* Clases asistidas/usadas */}
+                    <div style={{ background: '#111', padding: '20px 16px', textAlign: 'center',
+                      borderLeft: '2px solid #0a0a0a', borderRight: '2px solid #0a0a0a' }}>
+                      <p style={{ color: '#555', fontFamily: 'Space Grotesk',
+                        fontSize: '11px', letterSpacing: '3px', margin: '0 0 8px' }}>
+                        ASISTIDAS
+                      </p>
+                      <p style={{ color: '#00ff88', fontFamily: 'Anton',
+                        fontSize: '40px', margin: '0 0 4px', lineHeight: 1 }}>
+                        {inscripcionActual.clases_usadas}
+                      </p>
+                      <p style={{ color: '#555', fontFamily: 'Space Grotesk',
+                        fontSize: '12px', margin: 0 }}>
+                        clases
+                      </p>
+                    </div>
+
+                    {/* Clases restantes */}
+                    <div style={{ background: '#111', padding: '20px 16px', textAlign: 'center' }}>
+                      <p style={{ color: '#555', fontFamily: 'Space Grotesk',
+                        fontSize: '11px', letterSpacing: '3px', margin: '0 0 8px' }}>
+                        RESTANTES
+                      </p>
+                      <p style={{
+                        color: restantes <= 0 ? '#ff2d78' : restantes === 1 ? 'orange' : '#fff',
+                        fontFamily: 'Anton', fontSize: '40px', margin: '0 0 4px', lineHeight: 1
+                      }}>
+                        {Math.max(0, restantes)}
+                      </p>
+                      <p style={{ color: '#555', fontFamily: 'Space Grotesk',
+                        fontSize: '12px', margin: 0 }}>
+                        clases
+                      </p>
+                    </div>
                   </div>
-                  <button
-                    onClick={() => {
-                      const msg = `Hola, mi pago para el plan *${inscripcionActual.plan?.nombre}* está pendiente. Mi nombre es *${alumno.nombre_completo}*.`;
-                      window.open(`https://wa.me/573222508676?text=${encodeURIComponent(msg)}`, '_blank');
-                    }}
-                    className="btn-tape w-full py-3 text-sm"
-                  >
-                    INFORMAR PAGO POR WHATSAPP
-                  </button>
-                </div>
-              )}
 
-              <div className="mt-8 border-t border-white/10 pt-6">
-                <div className="flex flex-col md:flex-row justify-between gap-6">
-                  {/* Comprobante Section */}
-                  <div className="flex-1 space-y-4">
-                    <p className="font-mono text-[10px] text-white/40 uppercase tracking-widest flex items-center gap-2">
-                      <Upload size={12} /> Comprobante de Pago
+                  {/* 3. Barra de progreso visual debajo de las 3 estadísticas */}
+                  <div style={{ marginBottom: '24px' }}>
+                    <div style={{ background: '#1a1a1a', height: '6px', borderRadius: '3px', overflow: 'hidden' }}>
+                      <div style={{
+                        height: '100%',
+                        width: `${Math.min(100, (inscripcionActual.clases_usadas / (inscripcionActual.plan?.clases_incluidas || 1)) * 100)}%`,
+                        background: restantes <= 0 ? '#ff2d78' : restantes === 1 ? 'orange' : '#00ff88',
+                        transition: 'width 0.5s ease',
+                      }} />
+                    </div>
+                    <div style={{ display: 'flex', justifyContent: 'space-between',
+                      marginTop: '6px' }}>
+                      <span style={{ color: '#555', fontFamily: 'Space Grotesk', fontSize: '12px' }}>
+                        0
+                      </span>
+                      <span style={{ color: '#555', fontFamily: 'Space Grotesk', fontSize: '12px' }}>
+                        {inscripcionActual.plan?.clases_incluidas || 0} clases
+                      </span>
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
+
+            {/* Banners de alerta si aplica */}
+            {estadoPlan === 'pocas_clases' && (
+              <div style={{ background: 'rgba(255,165,0,0.1)', border: '3px solid orange',
+                padding: '20px', marginBottom: '24px' }}>
+                <p style={{ color: 'orange', fontFamily: 'Anton', fontSize: '20px', margin: '0 0 8px' }}>
+                  ⚡ TE QUEDA 1 SOLA CLASE
+                </p>
+                <p style={{ color: '#aaa', fontFamily: 'Space Grotesk', fontSize: '14px', margin: 0 }}>
+                  Renueva tu plan para seguir patinando sin interrupciones.
+                </p>
+              </div>
+            )}
+
+            {estadoPlan === 'agotado' && (
+              <div style={{ background: 'rgba(255,45,120,0.1)', border: '3px solid #ff2d78',
+                padding: '20px', marginBottom: '24px' }}>
+                <p style={{ color: '#ff2d78', fontFamily: 'Anton', fontSize: '20px', margin: '0 0 8px' }}>
+                  🔴 TUS CLASES SE AGOTARON
+                </p>
+                <p style={{ color: '#aaa', fontFamily: 'Space Grotesk', fontSize: '14px', margin: 0 }}>
+                  Has usado todas tus clases de este plan. Renueva para continuar.
+                </p>
+              </div>
+            )}
+
+            {estadoPlan === 'renovacion_pendiente' && (
+              <div style={{ background: 'rgba(0,255,136,0.05)', border: '2px solid #00ff88',
+                padding: '20px', marginBottom: '24px' }}>
+                <p style={{ color: '#00ff88', fontFamily: 'Anton', fontSize: '20px', margin: '0 0 8px' }}>
+                  ⏳ RENOVACIÓN EN PROCESO
+                </p>
+                <p style={{ color: '#aaa', fontFamily: 'Space Grotesk', fontSize: '14px', margin: 0 }}>
+                  Tu comprobante fue enviado. El admin confirmará tu renovación pronto.
+                </p>
+              </div>
+            )}
+
+            {/* Sección renovación si aplica */}
+            {(estadoPlan === 'agotado' || estadoPlan === 'pocas_clases') && (
+              <div style={{ background: '#111', border: '2px solid #333', padding: '24px', marginBottom: '24px' }}>
+                <h3 style={{ color: '#fff', fontFamily: 'Anton', fontSize: '22px',
+                  margin: '0 0 20px', letterSpacing: '1px' }}>
+                  RENOVAR MI PLAN
+                </h3>
+
+                {/* Selector de planes */}
+                <div style={{ display: 'grid', gap: '12px', marginBottom: '24px' }}>
+                  {planes.map(plan => (
+                    <button
+                      key={plan.id}
+                      onClick={() => setPlanRenovacion(plan)}
+                      style={{
+                        background: planRenovacion?.id === plan.id ? 'rgba(0,255,136,0.1)' : '#0a0a0a',
+                        border: `2px solid ${planRenovacion?.id === plan.id ? '#00ff88' : '#333'}`,
+                        color: '#fff', padding: '16px', cursor: 'pointer',
+                        fontFamily: 'Space Grotesk', fontSize: '14px', textAlign: 'left',
+                        display: 'flex', justifyContent: 'space-between', alignItems: 'center',
+                        width: '100%',
+                      }}>
+                      <span>{plan.nombre} — {plan.clases_incluidas} clases</span>
+                      <span style={{ color: '#00ff88', fontFamily: 'Anton', fontSize: '18px' }}>
+                        ${plan.precio.toLocaleString('es-CO')}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+
+                {/* Datos de pago */}
+                {planRenovacion && (
+                  <div style={{ background: '#0a0a0a', border: '1px solid #333',
+                    padding: '16px', marginBottom: '20px' }}>
+                    <p style={{ color: '#aaa', fontFamily: 'Space Grotesk',
+                      fontSize: '13px', margin: '0 0 8px' }}>
+                      Paga por Nequi a <strong style={{ color: '#fff' }}>@SPA442</strong> — A nombre de Silvia Peña
+                    </p>
+                    <p style={{ color: '#00ff88', fontFamily: 'Anton', fontSize: '24px', margin: 0 }}>
+                      ${planRenovacion.precio.toLocaleString('es-CO')} COP
+                    </p>
+                  </div>
+                )}
+
+                {/* Subida de comprobante de renovación */}
+                {planRenovacion && (
+                  <div>
+                    <p style={{ color: '#aaa', fontFamily: 'Space Grotesk',
+                      fontSize: '13px', margin: '0 0 12px' }}>
+                      Sube el comprobante de pago para renovar tu plan:
+                    </p>
+                    <SubirComprobante
+                      onSubida={async (url) => {
+                        const res = await guardarRenovacion({
+                          inscripcionId: inscripcionActual.id,
+                          nuevoPlanId: planRenovacion.id,
+                          comprobanteUrl: url,
+                        });
+                        if (res && 'success' in res && res.success) {
+                          alert('Plan renovado con éxito');
+                          window.location.reload();
+                        } else {
+                          alert('Error: ' + (res && 'error' in res ? res.error : 'Error al guardar renovación'));
+                        }
+                      }}
+                    />
+                    <p style={{ color: '#555', fontSize: '12px', marginTop: '8px',
+                      fontFamily: 'Space Grotesk' }}>
+                      Formatos: JPG, PNG, WEBP, PDF — Máx 10MB
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Resumen del plan activo SOLO si estado es activo */}
+            {estadoPlan === 'activo' && (
+              <div style={{ background: '#111', border: '2px solid #333',
+                padding: '24px', marginBottom: '24px' }}>
+                <div className="flex flex-col md:flex-row items-center gap-8">
+                  <div className="flex-shrink-0">
+                    {getStatusIcon(inscripcionActual.estado)}
+                  </div>
+                  <div className="flex-grow text-center md:text-left">
+                    <h3 className="font-anton text-4xl uppercase mb-1">
+                      {inscripcionActual.plan?.nombre}
+                    </h3>
+                    <p className="font-mono text-xs text-white/60 uppercase tracking-widest mb-4">
+                      Periodo: {inscripcionActual.mes} {inscripcionActual.anio}
                     </p>
 
-                    {inscripcionActual.comprobante_url ? (
-                      <div className="flex items-center gap-4">
-                        <div className="relative w-20 h-20 border-2 border-white/20 overflow-hidden">
-                           {/* eslint-disable-next-line @next/next/no-img-element */}
-                           <img src={inscripcionActual.comprobante_url} alt="Comprobante" className="object-cover w-full h-full" />
+                    {inscripcionActual.estado === 'pendiente' && (
+                      <div className="space-y-4">
+                        <div className="p-4 bg-yellow-400/10 border-l-4 border-yellow-400 text-yellow-400 font-mono text-sm uppercase">
+                          Tu solicitud fue enviada. El admin confirmará tu acceso pronto.
                         </div>
-                        <div className="space-y-2 text-left">
-                          <p className={`font-anton text-xs uppercase ${inscripcionActual.comprobante_verificado ? 'text-neon-green' : 'text-yellow-400'}`}>
-                            {inscripcionActual.comprobante_verificado ? '✅ Pago Verificado' : 'Comprobante enviado — pendiente de verificación'}
+                        <button
+                          onClick={() => {
+                            const msg = `Hola, mi pago para el plan *${inscripcionActual.plan?.nombre}* está pendiente. Mi nombre es *${alumno.nombre_completo}*.`;
+                            window.open(`https://wa.me/573222508676?text=${encodeURIComponent(msg)}`, '_blank');
+                          }}
+                          className="btn-tape w-full py-3 text-sm"
+                        >
+                          INFORMAR PAGO POR WHATSAPP
+                        </button>
+                      </div>
+                    )}
+
+                    <div className="mt-8 border-t border-white/10 pt-6">
+                      <div className="flex flex-col md:flex-row justify-between gap-6">
+                        {/* Comprobante Section */}
+                        <div className="flex-1 space-y-4">
+                          <p className="font-mono text-[10px] text-white/40 uppercase tracking-widest flex items-center gap-2">
+                            <Upload size={12} /> Comprobante de Pago
                           </p>
-                          {!inscripcionActual.comprobante_verificado && (
-                            <label className="text-[10px] text-white/60 underline cursor-pointer hover:text-white uppercase font-mono">
-                              Reemplazar
-                              <input type="file" className="hidden" accept="image/*,.pdf" onChange={handleUploadComprobante} disabled={uploadingComprobante} />
-                            </label>
+
+                          {inscripcionActual.comprobante_url ? (
+                            <div className="flex items-center gap-4">
+                              <div className="relative w-20 h-20 border-2 border-white/20 overflow-hidden">
+                                 {/* eslint-disable-next-line @next/next/no-img-element */}
+                                 <img src={inscripcionActual.comprobante_url} alt="Comprobante" className="object-cover w-full h-full" />
+                              </div>
+                              <div className="space-y-2 text-left">
+                                <p className={`font-anton text-xs uppercase ${inscripcionActual.comprobante_verificado ? 'text-neon-green' : 'text-yellow-400'}`}>
+                                  {inscripcionActual.comprobante_verificado ? '✅ Pago Verificado' : 'Comprobante enviado — pendiente de verificación'}
+                                </p>
+                                {!inscripcionActual.comprobante_verificado && (
+                                  <label className="text-[10px] text-white/60 underline cursor-pointer hover:text-white uppercase font-mono">
+                                    Reemplazar
+                                    <input type="file" className="hidden" accept="image/*,.pdf" onChange={handleUploadComprobante} disabled={uploadingComprobante} />
+                                  </label>
+                                )}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className="space-y-4 text-left">
+                              <p className="font-anton text-xs text-white/20 uppercase">Sin comprobante</p>
+                              <label className="btn-tape text-xs py-3 cursor-pointer inline-flex items-center gap-2">
+                                {uploadingComprobante ? 'SUBIENDO...' : 'SUBIR COMPROBANTE'}
+                                <input type="file" className="hidden" accept="image/*,.pdf" onChange={handleUploadComprobante} disabled={uploadingComprobante} />
+                              </label>
+                              <p className="font-mono text-[9px] text-white/40 uppercase">
+                                Formatos aceptados: JPG, PNG, WEBP, GIF, PDF — Máximo 10MB
+                              </p>
+                            </div>
+                          )}
+                          {error && (
+                            <p className="text-hot-pink font-mono text-[10px] uppercase">{error}</p>
                           )}
                         </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-4 text-left">
-                        <p className="font-anton text-xs text-white/20 uppercase">Sin comprobante</p>
-                        <label className="btn-tape text-xs py-3 cursor-pointer inline-flex items-center gap-2">
-                          {uploadingComprobante ? 'SUBIENDO...' : 'SUBIR COMPROBANTE'}
-                          <input type="file" className="hidden" accept="image/*,.pdf" onChange={handleUploadComprobante} disabled={uploadingComprobante} />
-                        </label>
-                        <p className="font-mono text-[9px] text-white/40 uppercase">
-                          Formatos aceptados: JPG, PNG, WEBP, GIF, PDF — Máximo 10MB
-                        </p>
-                      </div>
-                    )}
-                    {error && (
-                      <p className="text-hot-pink font-mono text-[10px] uppercase">{error}</p>
-                    )}
-                  </div>
 
-                  {/* Class Summary for all states */}
-                  <div className="flex-1 text-right space-y-2">
-                    <p className="font-mono text-[10px] text-white/40 uppercase">Vencimiento</p>
-                    <p className="font-anton text-xl text-white">
-                      {inscripcionActual.fecha_vencimiento ? new Date(inscripcionActual.fecha_vencimiento).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : 'N/A'}
-                    </p>
-                    <button
-                      onClick={() => setShowPlanChange(!showPlanChange)}
-                      className="text-[10px] text-neon-green underline uppercase font-mono flex items-center gap-1 justify-end ml-auto"
-                    >
-                      <RefreshCw size={10} /> Cambiar Plan
-                    </button>
+                        {/* Class Summary for all states */}
+                        <div className="flex-1 text-right space-y-2">
+                          <p className="font-mono text-[10px] text-white/40 uppercase">Vencimiento</p>
+                          <p className="font-anton text-xl text-white">
+                            {inscripcionActual.fecha_vencimiento ? new Date(inscripcionActual.fecha_vencimiento).toLocaleDateString('es-ES', { day: 'numeric', month: 'long', year: 'numeric' }) : 'N/A'}
+                          </p>
+                          <button
+                            onClick={() => setShowPlanChange(!showPlanChange)}
+                            className="text-[10px] text-neon-green underline uppercase font-mono flex items-center gap-1 justify-end ml-auto"
+                          >
+                            <RefreshCw size={10} /> Cambiar Plan
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+
+                    {inscripcionActual.estado === 'rechazado' && (
+                      <div className="p-4 bg-hot-pink/10 border-l-4 border-hot-pink text-hot-pink font-mono text-sm uppercase">
+                        Pago rechazado. Contacta al admin por WhatsApp.
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
-
-              {inscripcionActual.estado === 'aprobado' && (
-                <div className="space-y-6 mt-10">
-                  <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-                    <div className="bg-black/40 p-3 border border-white/10">
-                      <p className="text-[9px] text-white/40 uppercase">Clases Plan</p>
-                      <p className="font-anton text-2xl">{inscripcionActual.plan?.clases_incluidas}</p>
-                    </div>
-                    <div className="bg-black/40 p-3 border border-white/10">
-                      <p className="text-[9px] text-white/40 uppercase">Clases Usadas</p>
-                      <p className="font-anton text-2xl text-yellow-400">{inscripcionActual.clases_usadas}</p>
-                    </div>
-                    <div className="bg-black/40 p-3 border border-white/10">
-                      <p className="text-[9px] text-white/40 uppercase">Restantes</p>
-                      <p className="font-anton text-2xl text-neon-green">
-                        {Math.max(0, (inscripcionActual.plan?.clases_incluidas || 0) - (inscripcionActual.clases_usadas || 0))}
-                      </p>
-                    </div>
-                    <div className="bg-black/40 p-3 border border-white/10">
-                      <p className="text-[9px] text-white/40 uppercase">Precio Plan</p>
-                      <p className="font-anton text-2xl text-white/60">
-                        ${inscripcionActual.plan?.precio.toLocaleString()}
-                      </p>
-                    </div>
-                  </div>
-
-                  {/* Progress Bar */}
-                  <div className="w-full bg-white/10 h-3 rounded-full overflow-hidden">
-                    <motion.div
-                      initial={{ width: 0 }}
-                      animate={{ width: `${Math.min(100, ((inscripcionActual.clases_usadas || 0) / (inscripcionActual.plan?.clases_incluidas || 1)) * 100)}%` }}
-                      className="h-full bg-neon-green"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {inscripcionActual.estado === 'rechazado' && (
-                <div className="p-4 bg-hot-pink/10 border-l-4 border-hot-pink text-hot-pink font-mono text-sm uppercase">
-                  Pago rechazado. Contacta al admin por WhatsApp.
-                </div>
-              )}
-            </div>
-          </div>
+            )}
+          </>
         ) : (
           <div className="bg-[#1a1a1a] border-4 border-dashed border-white/20 p-8 text-center">
             <p className="font-mono text-sm text-white/40 uppercase tracking-widest">
