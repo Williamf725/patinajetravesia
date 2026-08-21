@@ -6,6 +6,7 @@ import { createClient } from '@/lib/supabase/client';
 import { updateInscripcionEstado } from '@/app/auth/actions/admin';
 import { ClipboardList, Check, X, Filter, Search, ShieldCheck, Fingerprint, Phone } from 'lucide-react';
 import { toast } from 'sonner';
+import { calcularEstadoPlan } from '@/lib/planes';
 
 export default function InscripcionesTab() {
   const [items, setItems] = useState<Inscripcion[]>([]);
@@ -18,6 +19,11 @@ export default function InscripcionesTab() {
   const [seguroSearch, setSeguroSearch] = useState('');
   const [selectedAlumnoForInscripcion, setSelectedAlumnoForInscripcion] = useState<Alumno | null>(null);
   const [planes, setPlanes] = useState<Plan[]>([]);
+  const [selectedComprobanteUrl, setSelectedComprobanteUrl] = useState<string | null>(null);
+
+  const abrirModalComprobante = (url: string) => {
+    setSelectedComprobanteUrl(url);
+  };
 
   const supabase = createClient();
 
@@ -223,6 +229,24 @@ export default function InscripcionesTab() {
   });
 
   const sortedItems = [...filteredItems].sort((a, b) => {
+    const estadoA = calcularEstadoPlan(a);
+    const estadoB = calcularEstadoPlan(b);
+
+    const pesoEstado = {
+      agotado: 1,
+      pocas_clases: 2,
+      renovacion_pendiente: 3,
+      activo: 4,
+      sin_plan: 5,
+    };
+
+    const pesoA = pesoEstado[estadoA] || 99;
+    const pesoB = pesoEstado[estadoB] || 99;
+
+    if (pesoA !== pesoB) {
+      return pesoA - pesoB;
+    }
+
     if (a.estado === 'pendiente' && b.estado !== 'pendiente') return -1;
     if (a.estado !== 'pendiente' && b.estado === 'pendiente') return 1;
 
@@ -288,6 +312,8 @@ export default function InscripcionesTab() {
               <th className="p-4 border-r border-white/20 min-w-[200px]">Estudiante / Identidad</th>
               <th className="p-4 border-r border-white/20">Perfil</th>
               <th className="p-4 border-r border-white/20">Plan Escogido</th>
+              <th className="p-4 border-r border-white/20 text-center">Estado Plan</th>
+              <th className="p-4 border-r border-white/20 text-center">Comprobante Renovación</th>
               <th className="p-4 border-r border-white/20 text-center">Precio</th>
               <th className="p-4 border-r border-white/20">Mes / Anio</th>
               <th className="p-4 border-r border-white/20">Estado</th>
@@ -296,9 +322,9 @@ export default function InscripcionesTab() {
           </thead>
           <tbody>
             {loading ? (
-              <tr><td colSpan={8} className="p-10 text-center animate-pulse">CARGANDO...</td></tr>
+              <tr><td colSpan={10} className="p-10 text-center animate-pulse">CARGANDO...</td></tr>
             ) : sortedItems.length === 0 ? (
-              <tr><td colSpan={8} className="p-10 text-center text-white/20">NO HAY REGISTROS QUE COINCIDAN</td></tr>
+              <tr><td colSpan={10} className="p-10 text-center text-white/20">NO HAY REGISTROS QUE COINCIDAN</td></tr>
             ) : (
               sortedItems.map((item) => (
                 <tr key={item.id} className={`border-b border-white/10 hover:bg-white/5 transition-colors ${item.estado === 'pendiente' ? 'bg-yellow-400/5' : ''}`}>
@@ -321,6 +347,47 @@ export default function InscripcionesTab() {
                   </td>
                   <td className="p-4 border-r border-white/20">
                     {item.plan?.nombre}
+                  </td>
+                  <td className="p-4 border-r border-white/20 text-center">
+                    {(() => {
+                      const estado = calcularEstadoPlan(item)
+                      const config = {
+                        activo: { color: '#00ff88', bg: 'rgba(0,255,136,0.1)', texto: '✅ ACTIVO' },
+                        pocas_clases: { color: 'orange', bg: 'rgba(255,165,0,0.1)', texto: '⚡ 1 CLASE' },
+                        agotado: { color: '#ff2d78', bg: 'rgba(255,45,120,0.1)', texto: '🔴 AGOTADO' },
+                        renovacion_pendiente: { color: '#00ff88', bg: 'rgba(0,255,136,0.05)', texto: '⏳ RENOVANDO' },
+                        sin_plan: { color: '#555', bg: 'transparent', texto: '— SIN PLAN' },
+                      }[estado]
+
+                      return (
+                        <span style={{
+                          background: config.bg, color: config.color,
+                          border: `1px solid ${config.color}`,
+                          padding: '4px 10px', fontFamily: 'Space Grotesk',
+                          fontSize: '11px', letterSpacing: '1px', whiteSpace: 'nowrap',
+                        }}>
+                          {config.texto}
+                        </span>
+                      )
+                    })()}
+                  </td>
+                  <td className="p-4 border-r border-white/20 text-center">
+                    {item.renovacion_pendiente && item.comprobante_url ? (
+                      <button
+                        onClick={() => abrirModalComprobante(item.comprobante_url!)}
+                        className="bg-white/10 hover:bg-white/20 border border-white/20 text-white font-mono text-[9px] px-2 py-1 uppercase cursor-pointer"
+                      >
+                        🧾 Ver nuevo comprobante
+                      </button>
+                    ) : item.renovacion_pendiente && !item.comprobante_url ? (
+                      <span style={{ color: 'orange', fontSize: '12px', fontFamily: 'Space Grotesk' }}>
+                        ⚠️ Sin comprobante aún
+                      </span>
+                    ) : (
+                      <span style={{ color: '#555', fontSize: '12px', fontFamily: 'Space Grotesk' }}>
+                        —
+                      </span>
+                    )}
                   </td>
               <td className="p-4 border-r border-white/20 text-center font-mono text-neon-green">
                     ${item.plan?.precio.toLocaleString()}
@@ -604,6 +671,59 @@ export default function InscripcionesTab() {
               <button
                 onClick={() => setSelectedAlumnoForInscripcion(null)}
                 className="w-full text-center font-mono text-[10px] text-white/40 uppercase hover:text-white transition-colors"
+              >
+                Cerrar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Renewal Proof Preview Modal */}
+      {selectedComprobanteUrl && (
+        <div
+          className="fixed inset-0 z-[100] bg-black/90 flex items-center justify-center p-4 backdrop-blur-sm"
+          onClick={() => setSelectedComprobanteUrl(null)}
+        >
+          <div
+            className="bg-[#131313] border-4 border-white max-w-2xl w-full max-h-[95vh] flex flex-col shadow-brutal relative"
+            onClick={e => e.stopPropagation()}
+          >
+            <button
+              onClick={() => setSelectedComprobanteUrl(null)}
+              className="absolute -top-4 -right-4 bg-hot-pink text-white p-2 border-2 border-white hover:scale-110 transition-transform z-10"
+            >
+              <X size={24} />
+            </button>
+
+            <div className="p-4 border-b-2 border-white flex justify-between items-center bg-white/5">
+              <h3 className="font-anton text-xl tracking-wider text-white uppercase italic">COMPROBANTE DE RENOVACIÓN</h3>
+            </div>
+
+            <div className="flex-1 overflow-auto p-4 flex flex-col items-center gap-4 bg-black/50">
+              {selectedComprobanteUrl.toLowerCase().endsWith('.pdf') ? (
+                <a
+                  href={selectedComprobanteUrl}
+                  target="_blank"
+                  rel="noreferrer"
+                  className="bg-white/10 text-white p-6 border border-white/20 flex flex-col items-center gap-2 hover:bg-white/20 transition-all font-mono text-xs uppercase"
+                >
+                   <span className="text-4xl">📄</span> Ver Documento PDF Externo
+                </a>
+              ) : (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={selectedComprobanteUrl}
+                  alt="Comprobante de Renovación"
+                  className="max-w-full max-h-[50vh] object-contain border-2 border-white/10"
+                />
+              )}
+            </div>
+
+            <div className="p-6 border-t-2 border-white bg-white/5">
+              <button
+                onClick={() => setSelectedComprobanteUrl(null)}
+                className="w-full bg-neon-green text-black font-anton uppercase text-sm py-3 hover:scale-105 transition-transform"
               >
                 Cerrar
               </button>

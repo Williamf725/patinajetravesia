@@ -408,7 +408,7 @@ export default function PortalClient({ userEmail, alumno, planes, inscripcionAct
 
                   {/* WhatsApp Button */}
                   <a
-                    href={`https://wa.me/573202027777?text=${encodeURIComponent(
+                    href={`https://wa.me/573222508676?text=${encodeURIComponent(
                       `Hola, soy ${alumno.nombre_completo} y acabo de subir el comprobante de mi inscripción al Club Travesía. Mi correo es ${alumno.email}`
                     )}`}
                     target="_blank"

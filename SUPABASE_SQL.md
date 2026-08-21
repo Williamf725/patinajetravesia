@@ -394,4 +394,9 @@ ALTER TABLE public.productos
 ADD COLUMN IF NOT EXISTS descripcion_corta TEXT,
 ADD COLUMN IF NOT EXISTS destacado BOOLEAN DEFAULT false,
 ADD COLUMN IF NOT EXISTS genero TEXT DEFAULT 'unisex';
+
+-- Control de pagos y renovación de planes
+ALTER TABLE public.inscripciones
+ADD COLUMN IF NOT EXISTS renovacion_pendiente BOOLEAN DEFAULT false,
+ADD COLUMN IF NOT EXISTS notificacion_pocas_clases_enviada BOOLEAN DEFAULT false;
 ```

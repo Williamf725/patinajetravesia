@@ -170,6 +170,36 @@ export async function updateComprobante(inscripcionId: string, url: string) {
   revalidatePath('/portal')
 }
 
+export async function guardarRenovacion({
+  inscripcionId,
+  nuevoPlanId,
+  comprobanteUrl,
+}: {
+  inscripcionId: string
+  nuevoPlanId: string
+  comprobanteUrl: string
+}) {
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user) return { error: 'No autenticado' }
+
+  const { error } = await supabase
+    .from('inscripciones')
+    .update({
+      plan_id: nuevoPlanId,
+      comprobante_url: comprobanteUrl,
+      comprobante_verificado: false,
+      renovacion_pendiente: true,
+      estado: 'pendiente',
+    })
+    .eq('id', inscripcionId)
+
+  if (error) return { error: error.message }
+
+  revalidatePath('/portal')
+  return { success: true }
+}
+
 export async function cambiarPlan(inscripcionId: string, planId: string) {
   const supabase = await createServerClient()
 
