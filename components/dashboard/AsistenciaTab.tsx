@@ -1,7 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { vincularNFC, desvincularNFC } from '@/app/auth/actions/nfc';
 import {
   format,
   startOfMonth,
@@ -45,7 +48,13 @@ export default function AsistenciaTab() {
   const [isSaving, setIsSaving] = useState(false);
   const [alumnoModal, setAlumnoModal] = useState<AlumnoConInscripcion | null>(null);
 
+  // NFC Management States
+  const [alumnoParaVincular, setAlumnoParaVincular] = useState<string>('');
+  const [leyendoNFC, setLeyendoNFC] = useState<boolean>(false);
+  const [mensajeVinculacion, setMensajeVinculacion] = useState<string | null>(null);
+
   const supabase = createClient();
+  const router = useRouter();
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -161,6 +170,54 @@ export default function AsistenciaTab() {
     }
   };
 
+  const leerNFCParaVincular = async () => {
+    if (!alumnoParaVincular) return;
+    setLeyendoNFC(true);
+    setMensajeVinculacion(null);
+
+    try {
+      if (!('NDEFReader' in window)) {
+        setMensajeVinculacion('❌ Tu navegador no soporta Web NFC. Usa Chrome en Android.');
+        setLeyendoNFC(false);
+        return;
+      }
+
+      // @ts-ignore — NDEFReader no tiene tipos oficiales aún
+      const reader = new NDEFReader();
+      await reader.scan();
+
+      reader.onreading = async ({ serialNumber }: { serialNumber: string }) => {
+        const nfcUid = serialNumber.toLowerCase().replace(/:/g, '');
+        const resultado = await vincularNFC({ alumnoId: alumnoParaVincular, nfcUid });
+        setMensajeVinculacion(resultado.mensaje);
+        setLeyendoNFC(false);
+        if (resultado.exito) {
+          fetchData();
+          router.refresh();
+        }
+      };
+
+      reader.onreadingerror = () => {
+        setMensajeVinculacion('❌ Error al leer la etiqueta NFC. Intenta de nuevo.');
+        setLeyendoNFC(false);
+      };
+    } catch (err) {
+      setMensajeVinculacion('❌ Error activando NFC. Verifica que esté habilitado.');
+      setLeyendoNFC(false);
+    }
+  };
+
+  const handleDesvincularNFC = async (alumnoId: string, nombre: string) => {
+    if (confirm(`¿Deseas desvincular la etiqueta NFC de ${nombre}?`)) {
+      const res = await desvincularNFC({ alumnoId });
+      setMensajeVinculacion(res.mensaje);
+      if (res.exito) {
+        fetchData();
+        router.refresh();
+      }
+    }
+  };
+
   const exportToExcel = () => {
     const data = alumnos.map(a => {
       const row: Record<string, string | number> = {
@@ -190,6 +247,143 @@ export default function AsistenciaTab() {
 
   return (
     <div className="flex flex-col gap-6">
+
+      {/* Acceso rápido a escáner NFC */}
+      <Link
+        href="/dashboard/nfc"
+        style={{
+          display: 'block',
+          background: '#00ff88',
+          color: '#000',
+          border: '3px solid #00ff88',
+          boxShadow: '4px 4px 0 #ff2d78',
+          padding: '20px',
+          textAlign: 'center',
+          textDecoration: 'none',
+          fontFamily: 'Anton, sans-serif',
+          fontSize: '20px',
+          letterSpacing: '2px',
+          marginBottom: '8px',
+        }}
+      >
+        📲 REGISTRAR ASISTENCIA CON NFC
+      </Link>
+
+      {/* Sección Gestión NFC */}
+      <div style={{ background: '#111', border: '2px solid #333', padding: '24px', marginBottom: '8px' }}>
+        <p style={{ color: '#ff2d78', fontFamily: 'Space Grotesk, monospace', fontSize: '11px', letterSpacing: '4px', margin: '0 0 16px', fontWeight: 'bold' }}>
+          ETIQUETAS NFC
+        </p>
+        <h3 style={{ color: '#fff', fontFamily: 'Anton, sans-serif', fontSize: '20px', margin: '0 0 20px' }}>
+          VINCULAR NFC A ALUMNO
+        </h3>
+
+        <p style={{ color: '#aaa', fontFamily: 'Space Grotesk, monospace', fontSize: '13px', margin: '0 0 20px', lineHeight: 1.6 }}>
+          Para vincular una etiqueta: selecciona el alumno, toca &quot;LEER NFC Y VINCULAR&quot; y acerca la etiqueta del alumno al celular.
+        </p>
+
+        {/* Selector de alumno */}
+        <select
+          value={alumnoParaVincular}
+          onChange={e => setAlumnoParaVincular(e.target.value)}
+          style={{
+            background: '#0a0a0a',
+            color: '#fff',
+            border: '1px solid #333',
+            padding: '12px 16px',
+            width: '100%',
+            marginBottom: '12px',
+            fontFamily: 'Space Grotesk, monospace',
+            fontSize: '14px'
+          }}
+        >
+          <option value="">Selecciona un alumno...</option>
+          {alumnos.map(a => (
+            <option key={a.id} value={a.id}>
+              #{a.numero_alumno} — {a.nombre_completo}
+              {a.nfc_uid ? ' ✅ (NFC vinculado)' : ' ⚠️ (sin NFC)'}
+            </option>
+          ))}
+        </select>
+
+        <button
+          onClick={leerNFCParaVincular}
+          disabled={!alumnoParaVincular || leyendoNFC}
+          style={{
+            background: !alumnoParaVincular ? '#222' : '#00ff88',
+            color: !alumnoParaVincular ? '#555' : '#000',
+            border: 'none',
+            padding: '14px 24px',
+            width: '100%',
+            fontFamily: 'Anton, sans-serif',
+            fontSize: '16px',
+            letterSpacing: '2px',
+            cursor: !alumnoParaVincular ? 'not-allowed' : 'pointer',
+            marginBottom: '12px',
+          }}
+        >
+          {leyendoNFC ? '📡 ACERCA LA ETIQUETA NFC...' : '📲 LEER NFC Y VINCULAR'}
+        </button>
+
+        {mensajeVinculacion && (
+          <p style={{
+            color: mensajeVinculacion.includes('✅') ? '#00ff88' : '#ff2d78',
+            fontFamily: 'Space Grotesk, monospace',
+            fontSize: '14px',
+            margin: '8px 0 0 0',
+            fontWeight: 'bold'
+          }}>
+            {mensajeVinculacion}
+          </p>
+        )}
+
+        {/* Lista de alumnos con NFC vinculado (con opción de desvincular) */}
+        {alumnos.filter(a => a.nfc_uid).length > 0 && (
+          <div style={{ marginTop: '20px', borderTop: '1px solid #222', paddingTop: '16px' }}>
+            <p style={{ color: '#00ff88', fontFamily: 'Space Grotesk, monospace', fontSize: '12px', letterSpacing: '2px', margin: '0 0 8px', fontWeight: 'bold' }}>
+              CON NFC VINCULADO ({alumnos.filter(a => a.nfc_uid).length}):
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {alumnos.filter(a => a.nfc_uid).map(a => (
+                <div key={a.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#181818', padding: '8px 12px', border: '1px solid #282828' }}>
+                  <span style={{ color: '#fff', fontFamily: 'Space Grotesk, monospace', fontSize: '13px' }}>
+                    #{a.numero_alumno} — {a.nombre_completo} <span style={{ color: '#00ff88', fontSize: '11px' }}>({a.nfc_uid})</span>
+                  </span>
+                  <button
+                    onClick={() => handleDesvincularNFC(a.id, a.nombre_completo)}
+                    style={{
+                      background: 'transparent',
+                      color: '#ff2d78',
+                      border: '1px solid #ff2d78',
+                      padding: '4px 8px',
+                      fontFamily: 'Space Grotesk, monospace',
+                      fontSize: '11px',
+                      cursor: 'pointer',
+                      marginLeft: 'auto'
+                    }}
+                  >
+                    🗑️ DESVINCULAR
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Lista de alumnos sin NFC vinculado */}
+        {alumnos.filter(a => !a.nfc_uid).length > 0 && (
+          <div style={{ marginTop: '20px', borderTop: '1px solid #222', paddingTop: '16px' }}>
+            <p style={{ color: '#555', fontFamily: 'Space Grotesk, monospace', fontSize: '12px', letterSpacing: '2px', margin: '0 0 8px', fontWeight: 'bold' }}>
+              SIN NFC VINCULADO ({alumnos.filter(a => !a.nfc_uid).length}):
+            </p>
+            {alumnos.filter(a => !a.nfc_uid).map(a => (
+              <p key={a.id} style={{ color: '#666', fontFamily: 'Space Grotesk, monospace', fontSize: '13px', margin: '4px 0' }}>
+                #{a.numero_alumno} — {a.nombre_completo}
+              </p>
+            ))}
+          </div>
+        )}
+      </div>
 
       {/* Top Filters */}
       <div className="flex flex-wrap items-center justify-between gap-6 bg-white/5 p-6 border-b border-white/10">
