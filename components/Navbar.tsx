@@ -287,8 +287,11 @@ export default function Navbar() {
         {/* Logo — completamente transparente */}
         <Link href="/" style={{ background: 'transparent' }}>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="https://res.cloudinary.com/dvpnkr2i9/image/upload/v1784734270/40930-removebg-preview_bmvhkt.png"
-            style={{ height: '36px', width: 'auto' }} alt="Travesía" />
+          <img
+            src="https://res.cloudinary.com/dvpnkr2i9/image/upload/v1784734270/40930-removebg-preview_bmvhkt.png"
+            style={{ height: '36px', width: 'auto' }}
+            alt="Travesía"
+          />
         </Link>
 
         {/* Desktop links — flotantes sin fondo */}

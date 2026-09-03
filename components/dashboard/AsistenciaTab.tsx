@@ -182,7 +182,7 @@ export default function AsistenciaTab() {
         return;
       }
 
-      // @ts-ignore — NDEFReader no tiene tipos oficiales aún
+      // @ts-expect-error — NDEFReader no tiene tipos oficiales aún
       const reader = new NDEFReader();
       await reader.scan();
 
@@ -201,7 +201,7 @@ export default function AsistenciaTab() {
         setMensajeVinculacion('❌ Error al leer la etiqueta NFC. Intenta de nuevo.');
         setLeyendoNFC(false);
       };
-    } catch (err) {
+    } catch {
       setMensajeVinculacion('❌ Error activando NFC. Verifica que esté habilitado.');
       setLeyendoNFC(false);
     }

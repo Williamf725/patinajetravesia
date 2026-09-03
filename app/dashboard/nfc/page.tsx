@@ -33,7 +33,7 @@ export default function NFCScanner() {
       setEscaneando(true)
       setResultado(null)
 
-      // @ts-ignore — NDEFReader no tiene tipos oficiales aún
+      // @ts-expect-error — NDEFReader no tiene tipos oficiales aún
       const reader = new NDEFReader()
       await reader.scan()
 
