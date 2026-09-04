@@ -1,7 +1,10 @@
 'use client';
 
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { createClient } from '@/lib/supabase/client';
+import { vincularNFC, desvincularNFC } from '@/app/auth/actions/nfc';
 import {
   format,
   startOfMonth,
@@ -45,7 +48,17 @@ export default function AsistenciaTab() {
   const [isSaving, setIsSaving] = useState(false);
   const [alumnoModal, setAlumnoModal] = useState<AlumnoConInscripcion | null>(null);
 
+  // Mobile View & Selected Date State
+  const [modoVista, setModoVista] = useState<'tarjetas' | 'tabla'>('tarjetas');
+  const [fechaSeleccionadaMobile, setFechaSeleccionadaMobile] = useState<string>('');
+
+  // NFC Management States
+  const [alumnoParaVincular, setAlumnoParaVincular] = useState<string>('');
+  const [leyendoNFC, setLeyendoNFC] = useState<boolean>(false);
+  const [mensajeVinculacion, setMensajeVinculacion] = useState<string | null>(null);
+
   const supabase = createClient();
+  const router = useRouter();
 
   const fetchData = useCallback(async () => {
     setLoading(true);
@@ -82,6 +95,19 @@ export default function AsistenciaTab() {
       return false;
     });
   }, [mes, filtroDia]);
+
+  // Set default selected mobile date when fechasMes updates
+  useEffect(() => {
+    if (fechasMes.length > 0) {
+      const hoyStr = format(new Date(), 'yyyy-MM-dd');
+      const existeHoy = fechasMes.some(f => format(f, 'yyyy-MM-dd') === hoyStr);
+      if (existeHoy) {
+        setFechaSeleccionadaMobile(hoyStr);
+      } else if (!fechaSeleccionadaMobile || !fechasMes.some(f => format(f, 'yyyy-MM-dd') === fechaSeleccionadaMobile)) {
+        setFechaSeleccionadaMobile(format(fechasMes[0], 'yyyy-MM-dd'));
+      }
+    }
+  }, [fechasMes, fechaSeleccionadaMobile]);
 
   const toggleAsistencia = (alumnoId: string, fecha: Date) => {
     const fechaStr = format(fecha, 'yyyy-MM-dd');
@@ -161,6 +187,54 @@ export default function AsistenciaTab() {
     }
   };
 
+  const leerNFCParaVincular = async () => {
+    if (!alumnoParaVincular) return;
+    setLeyendoNFC(true);
+    setMensajeVinculacion(null);
+
+    try {
+      if (!('NDEFReader' in window)) {
+        setMensajeVinculacion('❌ Tu navegador no soporta Web NFC. Usa Chrome en Android.');
+        setLeyendoNFC(false);
+        return;
+      }
+
+      // @ts-expect-error — NDEFReader no tiene tipos oficiales aún
+      const reader = new NDEFReader();
+      await reader.scan();
+
+      reader.onreading = async ({ serialNumber }: { serialNumber: string }) => {
+        const nfcUid = serialNumber.toLowerCase().replace(/:/g, '');
+        const resultado = await vincularNFC({ alumnoId: alumnoParaVincular, nfcUid });
+        setMensajeVinculacion(resultado.mensaje);
+        setLeyendoNFC(false);
+        if (resultado.exito) {
+          fetchData();
+          router.refresh();
+        }
+      };
+
+      reader.onreadingerror = () => {
+        setMensajeVinculacion('❌ Error al leer la etiqueta NFC. Intenta de nuevo.');
+        setLeyendoNFC(false);
+      };
+    } catch {
+      setMensajeVinculacion('❌ Error activando NFC. Verifica que esté habilitado.');
+      setLeyendoNFC(false);
+    }
+  };
+
+  const handleDesvincularNFC = async (alumnoId: string, nombre: string) => {
+    if (confirm(`¿Deseas desvincular la etiqueta NFC de ${nombre}?`)) {
+      const res = await desvincularNFC({ alumnoId });
+      setMensajeVinculacion(res.mensaje);
+      if (res.exito) {
+        fetchData();
+        router.refresh();
+      }
+    }
+  };
+
   const exportToExcel = () => {
     const data = alumnos.map(a => {
       const row: Record<string, string | number> = {
@@ -190,6 +264,177 @@ export default function AsistenciaTab() {
 
   return (
     <div className="flex flex-col gap-6">
+
+      {/* Acceso rápido a escáner NFC */}
+      <Link
+        href="/dashboard/nfc"
+        style={{
+          display: 'block',
+          background: '#00ff88',
+          color: '#000',
+          border: '3px solid #00ff88',
+          boxShadow: '4px 4px 0 #ff2d78',
+          padding: '20px',
+          textAlign: 'center',
+          textDecoration: 'none',
+          fontFamily: 'Anton, sans-serif',
+          fontSize: '20px',
+          letterSpacing: '2px',
+          marginBottom: '8px',
+        }}
+      >
+        📲 REGISTRAR ASISTENCIA CON NFC
+      </Link>
+
+      {/* Sección Gestión NFC */}
+      <div style={{ background: '#111', border: '2px solid #333', padding: '24px', marginBottom: '8px' }}>
+        <p style={{ color: '#ff2d78', fontFamily: 'Space Grotesk, monospace', fontSize: '11px', letterSpacing: '4px', margin: '0 0 16px', fontWeight: 'bold' }}>
+          ETIQUETAS NFC
+        </p>
+        <h3 style={{ color: '#fff', fontFamily: 'Anton, sans-serif', fontSize: '20px', margin: '0 0 20px' }}>
+          VINCULAR NFC A ALUMNO
+        </h3>
+
+        <p style={{ color: '#aaa', fontFamily: 'Space Grotesk, monospace', fontSize: '13px', margin: '0 0 20px', lineHeight: 1.6 }}>
+          Para vincular una etiqueta: selecciona el alumno, toca &quot;LEER NFC Y VINCULAR&quot; y acerca la etiqueta del alumno al celular.
+        </p>
+
+        {/* Selector de alumno */}
+        <select
+          value={alumnoParaVincular}
+          onChange={e => setAlumnoParaVincular(e.target.value)}
+          style={{
+            background: '#0a0a0a',
+            color: '#fff',
+            border: '1px solid #333',
+            padding: '12px 16px',
+            width: '100%',
+            marginBottom: '12px',
+            fontFamily: 'Space Grotesk, monospace',
+            fontSize: '14px'
+          }}
+        >
+          <option value="">Selecciona un alumno...</option>
+          {alumnos.map(a => (
+            <option key={a.id} value={a.id}>
+              #{a.numero_alumno} — {a.nombre_completo}
+              {a.nfc_uid ? ' ✅ (NFC vinculado)' : ' ⚠️ (sin NFC)'}
+            </option>
+          ))}
+        </select>
+
+        <button
+          onClick={leerNFCParaVincular}
+          disabled={!alumnoParaVincular || leyendoNFC}
+          style={{
+            background: !alumnoParaVincular ? '#222' : '#00ff88',
+            color: !alumnoParaVincular ? '#555' : '#000',
+            border: 'none',
+            padding: '14px 24px',
+            width: '100%',
+            fontFamily: 'Anton, sans-serif',
+            fontSize: '16px',
+            letterSpacing: '2px',
+            cursor: !alumnoParaVincular ? 'not-allowed' : 'pointer',
+            marginBottom: '12px',
+          }}
+        >
+          {leyendoNFC ? '📡 ACERCA LA ETIQUETA NFC...' : '📲 LEER NFC Y VINCULAR'}
+        </button>
+
+        {mensajeVinculacion && (
+          <p style={{
+            color: mensajeVinculacion.includes('✅') ? '#00ff88' : '#ff2d78',
+            fontFamily: 'Space Grotesk, monospace',
+            fontSize: '14px',
+            margin: '8px 0 0 0',
+            fontWeight: 'bold'
+          }}>
+            {mensajeVinculacion}
+          </p>
+        )}
+
+        {/* Lista de alumnos con NFC vinculado (con opción de desvincular) */}
+        {alumnos.filter(a => a.nfc_uid).length > 0 && (
+          <div style={{ marginTop: '20px', borderTop: '1px solid #222', paddingTop: '16px' }}>
+            <p style={{ color: '#00ff88', fontFamily: 'Space Grotesk, monospace', fontSize: '12px', letterSpacing: '2px', margin: '0 0 8px', fontWeight: 'bold' }}>
+              CON NFC VINCULADO ({alumnos.filter(a => a.nfc_uid).length}):
+            </p>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+              {alumnos.filter(a => a.nfc_uid).map(a => (
+                <div key={a.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', background: '#181818', padding: '8px 12px', border: '1px solid #282828' }}>
+                  <span style={{ color: '#fff', fontFamily: 'Space Grotesk, monospace', fontSize: '13px' }}>
+                    #{a.numero_alumno} — {a.nombre_completo} <span style={{ color: '#00ff88', fontSize: '11px' }}>({a.nfc_uid})</span>
+                  </span>
+                  <button
+                    onClick={() => handleDesvincularNFC(a.id, a.nombre_completo)}
+                    style={{
+                      background: 'transparent',
+                      color: '#ff2d78',
+                      border: '1px solid #ff2d78',
+                      padding: '4px 8px',
+                      fontFamily: 'Space Grotesk, monospace',
+                      fontSize: '11px',
+                      cursor: 'pointer',
+                      marginLeft: 'auto'
+                    }}
+                  >
+                    🗑️ DESVINCULAR
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Lista de alumnos sin NFC vinculado */}
+        {alumnos.filter(a => !a.nfc_uid).length > 0 && (
+          <div style={{ marginTop: '20px', borderTop: '1px solid #222', paddingTop: '16px' }}>
+            <p style={{ color: '#555', fontFamily: 'Space Grotesk, monospace', fontSize: '12px', letterSpacing: '2px', margin: '0 0 8px', fontWeight: 'bold' }}>
+              SIN NFC VINCULADO ({alumnos.filter(a => !a.nfc_uid).length}):
+            </p>
+            {alumnos.filter(a => !a.nfc_uid).map(a => (
+              <p key={a.id} style={{ color: '#666', fontFamily: 'Space Grotesk, monospace', fontSize: '13px', margin: '4px 0' }}>
+                #{a.numero_alumno} — {a.nombre_completo}
+              </p>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {/* Selector Modo Vista (Tarjetas Móvil vs Tabla Planilla) */}
+      <div className="flex items-center gap-2 border-b-2 border-white/20 pb-4">
+        <button
+          onClick={() => setModoVista('tarjetas')}
+          style={{
+            background: modoVista === 'tarjetas' ? '#00ff88' : '#111',
+            color: modoVista === 'tarjetas' ? '#000' : '#888',
+            border: '2px solid #00ff88',
+            padding: '10px 16px',
+            fontFamily: 'Anton, sans-serif',
+            fontSize: '14px',
+            letterSpacing: '1px',
+            cursor: 'pointer',
+          }}
+        >
+          📱 VISTA MÓVIL (POR DÍA)
+        </button>
+        <button
+          onClick={() => setModoVista('tabla')}
+          style={{
+            background: modoVista === 'tabla' ? '#00ff88' : '#111',
+            color: modoVista === 'tabla' ? '#000' : '#888',
+            border: '2px solid #00ff88',
+            padding: '10px 16px',
+            fontFamily: 'Anton, sans-serif',
+            fontSize: '14px',
+            letterSpacing: '1px',
+            cursor: 'pointer',
+          }}
+        >
+          📊 PLANILLA COMPLETA
+        </button>
+      </div>
 
       {/* Top Filters */}
       <div className="flex flex-wrap items-center justify-between gap-6 bg-white/5 p-6 border-b border-white/10">
@@ -232,85 +477,293 @@ export default function AsistenciaTab() {
         </div>
       </div>
 
-      {/* Spreadsheet Table */}
-      <div className="tabla-admin overflow-x-auto max-h-[700px] border-4 border-white shadow-brutal">
-        <table className="w-full border-collapse font-mono text-[10px]">
-          <thead className="sticky top-0 z-20 bg-black">
-            <tr className="border-b-2 border-white">
-              <th className="p-3 text-left border-r border-white/20 w-12 sticky left-0 bg-black z-30">#</th>
-              <th className="p-3 text-left border-r border-white/20 min-w-[200px] sticky left-12 bg-black z-30">ESTUDIANTE / IDENTIDAD</th>
-              <th className="p-3 text-center border-r border-white/20 w-16">PERFIL</th>
-              <th className="p-3 text-center border-r border-white/20 w-12">ELIM</th>
-              {fechasMes.map((fecha, i) => (
-                <th key={i} className="p-2 text-center border-r border-white/20 min-w-[60px]">
-                  <span className="text-[8px] text-white/40 block">
-                    {DAY_INDICES[getDay(fecha)]?.substring(0,3)}
-                  </span>
-                  {format(fecha, 'dd/MM')}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {alumnos.map((alumno) => (
-              <tr key={alumno.id} className="border-b border-white/10 hover:bg-white/5 transition-colors">
-                <td className="p-3 border-r border-white/20 sticky left-0 bg-[#1a1a1a] z-10 text-neon-green font-bold">
-                    {alumno.numero_alumno}
-                </td>
-                <td className="p-3 border-r border-white/20 sticky left-12 bg-[#1a1a1a] z-10">
-                   <div className="flex flex-col gap-1">
-                      <button
-                        onClick={() => setAlumnoModal(alumno)}
-                        style={{ background: 'none', border: 'none', color: '#b8d300',
-                        cursor: 'pointer', fontFamily: 'Anton', fontSize: '16px',
-                        textDecoration: 'underline', textUnderlineOffset: '4px', textAlign: 'left', padding: 0 }}>
-                        {alumno.nombre_completo}
-                      </button>
-                      <div className="flex flex-wrap gap-3 text-[8px] text-white/40 font-bold uppercase">
-                         <span
-                           className="flex items-center gap-1 cursor-pointer hover:text-white"
-                           onClick={() => {
-                              const newNombre = prompt('Nuevo nombre completo:', alumno.nombre_completo);
-                              if (newNombre) handleUpdateAlumno(alumno.id, { nombre_completo: newNombre });
-                           }}
-                         >
-                           <ShieldCheck size={10} /> {alumno.tipo_documento?.replace('_', ' ') || '---'}
-                         </span>
-                         <span className="flex items-center gap-1"><Fingerprint size={10} /> {alumno.numero_documento || '---'}</span>
-                         <span className="flex items-center gap-1"><Phone size={10} /> {alumno.telefono || '---'}</span>
-                      </div>
-                   </div>
-                </td>
-                <td className="p-3 border-r border-white/20 text-center">
-                    {alumno.perfil_completo ? '✅' : '⚠️'}
-                </td>
-                <td className="p-3 border-r border-white/20 text-center">
+      {/* VISTA MÓVIL DE TARJETAS POR FECHA */}
+      {modoVista === 'tarjetas' && (
+        <div className="flex flex-col gap-6">
+
+          {/* Selector y Navegación de Fecha de Clase */}
+          <div style={{ background: '#111', border: '2px solid #00ff88', padding: '16px' }}>
+            <p style={{ color: '#ff2d78', fontFamily: 'Space Grotesk, monospace', fontSize: '11px', letterSpacing: '3px', margin: '0 0 8px', fontWeight: 'bold' }}>
+              SELECCIONA FECHA DE CLASE
+            </p>
+
+            {/* Selector de fecha de clase en el mes */}
+            {fechasMes.length === 0 ? (
+              <p style={{ color: '#888', fontFamily: 'Space Grotesk, monospace' }}>No hay clases registradas para este filtro en el mes.</p>
+            ) : (
+              <div className="flex flex-col gap-3">
+                <select
+                  value={fechaSeleccionadaMobile}
+                  onChange={e => setFechaSeleccionadaMobile(e.target.value)}
+                  style={{
+                    background: '#0a0a0a',
+                    color: '#fff',
+                    border: '1px solid #333',
+                    padding: '12px 16px',
+                    fontFamily: 'Space Grotesk, monospace',
+                    fontSize: '15px',
+                    width: '100%'
+                  }}
+                >
+                  {fechasMes.map(f => {
+                    const fStr = format(f, 'yyyy-MM-dd');
+                    const dayIdx = getDay(f);
+                    const nombreDia = DAY_INDICES[dayIdx] || '';
+                    const labelFormatted = `${nombreDia.toUpperCase()} — ${format(f, 'dd/MM/yyyy')}`;
+                    return (
+                      <option key={fStr} value={fStr}>
+                        {labelFormatted}
+                      </option>
+                    );
+                  })}
+                </select>
+
+                {/* Navegación rápido Anterior / Siguiente */}
+                <div className="flex justify-between items-center gap-2">
                   <button
-                    onClick={() => handleDeleteAlumno(alumno.id, alumno.nombre_completo)}
-                    className="text-white/20 hover:text-hot-pink transition-colors"
+                    disabled={fechasMes.findIndex(f => format(f, 'yyyy-MM-dd') === fechaSeleccionadaMobile) <= 0}
+                    onClick={() => {
+                      const idx = fechasMes.findIndex(f => format(f, 'yyyy-MM-dd') === fechaSeleccionadaMobile);
+                      if (idx > 0) setFechaSeleccionadaMobile(format(fechasMes[idx - 1], 'yyyy-MM-dd'));
+                    }}
+                    style={{
+                      background: '#1a1a1a',
+                      color: '#fff',
+                      border: '1px solid #333',
+                      padding: '8px 16px',
+                      fontFamily: 'Space Grotesk, monospace',
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      opacity: fechasMes.findIndex(f => format(f, 'yyyy-MM-dd') === fechaSeleccionadaMobile) <= 0 ? 0.4 : 1
+                    }}
                   >
-                    <Trash2 size={14} />
+                    ◀ DÍA ANTERIOR
                   </button>
-                </td>
-                {fechasMes.map((fecha, i) => {
-                  const fechaStr = format(fecha, 'yyyy-MM-dd');
-                  const isPresent = asistencia.find(a => a.alumno_id === alumno.id && a.fecha === fechaStr)?.presente;
-                  return (
-                    <td key={i} className="p-0 border-r border-white/20">
-                      <button
-                        onClick={() => toggleAsistencia(alumno.id, fecha)}
-                        className={`w-full h-12 flex items-center justify-center transition-colors ${isPresent ? 'bg-neon-green/20 text-neon-green font-black text-lg' : 'hover:bg-white/10 text-white/5'}`}
-                      >
-                        {isPresent ? '●' : '○'}
-                      </button>
-                    </td>
-                  );
-                })}
+
+                  {/* Resumen asistencia del día seleccionado */}
+                  {(() => {
+                    const asistieronHoy = alumnos.filter(a =>
+                      asistencia.some(asis => asis.alumno_id === a.id && asis.fecha === fechaSeleccionadaMobile && asis.presente)
+                    ).length;
+                    return (
+                      <span style={{ color: '#00ff88', fontFamily: 'Anton, sans-serif', fontSize: '16px' }}>
+                        {asistieronHoy} / {alumnos.length} PRESENTES
+                      </span>
+                    );
+                  })()}
+
+                  <button
+                    disabled={fechasMes.findIndex(f => format(f, 'yyyy-MM-dd') === fechaSeleccionadaMobile) >= fechasMes.length - 1}
+                    onClick={() => {
+                      const idx = fechasMes.findIndex(f => format(f, 'yyyy-MM-dd') === fechaSeleccionadaMobile);
+                      if (idx < fechasMes.length - 1) setFechaSeleccionadaMobile(format(fechasMes[idx + 1], 'yyyy-MM-dd'));
+                    }}
+                    style={{
+                      background: '#1a1a1a',
+                      color: '#fff',
+                      border: '1px solid #333',
+                      padding: '8px 16px',
+                      fontFamily: 'Space Grotesk, monospace',
+                      fontSize: '12px',
+                      cursor: 'pointer',
+                      opacity: fechasMes.findIndex(f => format(f, 'yyyy-MM-dd') === fechaSeleccionadaMobile) >= fechasMes.length - 1 ? 0.4 : 1
+                    }}
+                  >
+                    DÍA SIGUIENTE ▶
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Tarjetas Verticales de Alumnos para el Día Seleccionado */}
+          <div className="flex flex-col gap-3">
+            {alumnos.map(alumno => {
+              const isPresent = asistencia.some(a => a.alumno_id === alumno.id && a.fecha === fechaSeleccionadaMobile && a.presente);
+              const fechaObj = fechaSeleccionadaMobile ? new Date(fechaSeleccionadaMobile + 'T00:00:00') : new Date();
+
+              return (
+                <div
+                  key={alumno.id}
+                  style={{
+                    background: '#111',
+                    border: isPresent ? '2px solid #00ff88' : '2px solid #333',
+                    padding: '16px',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '12px',
+                    transition: 'all 0.2s',
+                  }}
+                >
+                  <div className="flex justify-between items-start gap-2">
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span style={{ color: '#00ff88', fontFamily: 'Anton, sans-serif', fontSize: '16px' }}>
+                          #{alumno.numero_alumno}
+                        </span>
+                        <button
+                          onClick={() => setAlumnoModal(alumno)}
+                          style={{
+                            background: 'none',
+                            border: 'none',
+                            color: '#fff',
+                            fontFamily: 'Anton, sans-serif',
+                            fontSize: '18px',
+                            textAlign: 'left',
+                            cursor: 'pointer',
+                            textDecoration: 'underline',
+                            textUnderlineOffset: '3px'
+                          }}
+                        >
+                          {alumno.nombre_completo}
+                        </button>
+                      </div>
+                      <p style={{ color: '#888', fontFamily: 'Space Grotesk, monospace', fontSize: '11px', margin: '4px 0 0' }}>
+                        {alumno.tipo_documento?.replace('_', ' ').toUpperCase() || 'DOC'}: {alumno.numero_documento || '---'} · TEL: {alumno.telefono || '---'}
+                      </p>
+                    </div>
+
+                    <button
+                      onClick={() => handleDeleteAlumno(alumno.id, alumno.nombre_completo)}
+                      style={{ background: 'none', border: 'none', color: '#ff2d78', cursor: 'pointer', opacity: 0.6 }}
+                      title="Eliminar Alumno"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+
+                  {/* Botón táctil grande de Asistencia para la fecha seleccionada */}
+                  <button
+                    onClick={() => toggleAsistencia(alumno.id, fechaObj)}
+                    style={{
+                      background: isPresent ? '#00ff88' : '#1a1a1a',
+                      color: isPresent ? '#000' : '#fff',
+                      border: isPresent ? '2px solid #00ff88' : '2px solid #ff2d78',
+                      boxShadow: isPresent ? '0 0 10px rgba(0,255,136,0.3)' : 'none',
+                      padding: '14px',
+                      fontFamily: 'Anton, sans-serif',
+                      fontSize: '16px',
+                      letterSpacing: '1px',
+                      cursor: 'pointer',
+                      width: '100%',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      gap: '8px',
+                      transition: 'all 0.15s'
+                    }}
+                  >
+                    {isPresent ? '✅ PRESENTE' : '❌ AUSENTE'}
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Botón Inferior para Guardar Cambios */}
+          <button
+            onClick={handleSave}
+            disabled={isSaving}
+            style={{
+              background: '#00ff88',
+              color: '#000',
+              border: '3px solid #00ff88',
+              boxShadow: '4px 4px 0 #ff2d78',
+              padding: '18px',
+              fontFamily: 'Anton, sans-serif',
+              fontSize: '18px',
+              letterSpacing: '2px',
+              cursor: isSaving ? 'not-allowed' : 'pointer',
+              marginTop: '12px',
+              width: '100%'
+            }}
+          >
+            {isSaving ? 'GUARDANDO ASISTENCIA...' : '💾 GUARDAR ASISTENCIA DE HOY'}
+          </button>
+        </div>
+      )}
+
+      {/* Spreadsheet Table (Vista Planilla Completa) */}
+      {modoVista === 'tabla' && (
+        <div className="tabla-admin overflow-x-auto max-h-[700px] border-4 border-white shadow-brutal">
+          <table className="w-full border-collapse font-mono text-[10px]">
+            <thead className="sticky top-0 z-20 bg-black">
+              <tr className="border-b-2 border-white">
+                <th className="p-3 text-left border-r border-white/20 w-12 sticky left-0 bg-black z-30">#</th>
+                <th className="p-3 text-left border-r border-white/20 min-w-[200px] sticky left-12 bg-black z-30">ESTUDIANTE / IDENTIDAD</th>
+                <th className="p-3 text-center border-r border-white/20 w-16">PERFIL</th>
+                <th className="p-3 text-center border-r border-white/20 w-12">ELIM</th>
+                {fechasMes.map((fecha, i) => (
+                  <th key={i} className="p-2 text-center border-r border-white/20 min-w-[60px]">
+                    <span className="text-[8px] text-white/40 block">
+                      {DAY_INDICES[getDay(fecha)]?.substring(0,3)}
+                    </span>
+                    {format(fecha, 'dd/MM')}
+                  </th>
+                ))}
               </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
+            </thead>
+            <tbody>
+              {alumnos.map((alumno) => (
+                <tr key={alumno.id} className="border-b border-white/10 hover:bg-white/5 transition-colors">
+                  <td className="p-3 border-r border-white/20 sticky left-0 bg-[#1a1a1a] z-10 text-neon-green font-bold">
+                      {alumno.numero_alumno}
+                  </td>
+                  <td className="p-3 border-r border-white/20 sticky left-12 bg-[#1a1a1a] z-10">
+                     <div className="flex flex-col gap-1">
+                        <button
+                          onClick={() => setAlumnoModal(alumno)}
+                          style={{ background: 'none', border: 'none', color: '#b8d300',
+                          cursor: 'pointer', fontFamily: 'Anton', fontSize: '16px',
+                          textDecoration: 'underline', textUnderlineOffset: '4px', textAlign: 'left', padding: 0 }}>
+                          {alumno.nombre_completo}
+                        </button>
+                        <div className="flex flex-wrap gap-3 text-[8px] text-white/40 font-bold uppercase">
+                           <span
+                             className="flex items-center gap-1 cursor-pointer hover:text-white"
+                             onClick={() => {
+                                const newNombre = prompt('Nuevo nombre completo:', alumno.nombre_completo);
+                                if (newNombre) handleUpdateAlumno(alumno.id, { nombre_completo: newNombre });
+                             }}
+                           >
+                             <ShieldCheck size={10} /> {alumno.tipo_documento?.replace('_', ' ') || '---'}
+                           </span>
+                           <span className="flex items-center gap-1"><Fingerprint size={10} /> {alumno.numero_documento || '---'}</span>
+                           <span className="flex items-center gap-1"><Phone size={10} /> {alumno.telefono || '---'}</span>
+                        </div>
+                     </div>
+                  </td>
+                  <td className="p-3 border-r border-white/20 text-center">
+                      {alumno.perfil_completo ? '✅' : '⚠️'}
+                  </td>
+                  <td className="p-3 border-r border-white/20 text-center">
+                    <button
+                      onClick={() => handleDeleteAlumno(alumno.id, alumno.nombre_completo)}
+                      className="text-white/20 hover:text-hot-pink transition-colors"
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  </td>
+                  {fechasMes.map((fecha, i) => {
+                    const fechaStr = format(fecha, 'yyyy-MM-dd');
+                    const isPresent = asistencia.find(a => a.alumno_id === alumno.id && a.fecha === fechaStr)?.presente;
+                    return (
+                      <td key={i} className="p-0 border-r border-white/20">
+                        <button
+                          onClick={() => toggleAsistencia(alumno.id, fecha)}
+                          className={`w-full h-12 flex items-center justify-center transition-colors ${isPresent ? 'bg-neon-green/20 text-neon-green font-black text-lg' : 'hover:bg-white/10 text-white/5'}`}
+                        >
+                          {isPresent ? '●' : '○'}
+                        </button>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       {/* Alumno Info Modal */}
       {alumnoModal && (

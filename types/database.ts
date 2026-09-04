@@ -20,6 +20,18 @@ export type Alumno = {
   comprobante_inscripcion_pendiente?: boolean;
   tipo_pago_inscripcion?: 'solo_inscripcion' | 'inscripcion_y_plan' | null;
   plan_inscripcion_id?: string | null;
+  nfc_uid?: string | null;
+};
+
+export type NFCLog = {
+  id: string;
+  nfc_uid: string;
+  alumno_id: string | null;
+  fecha: string;
+  dia_clase: string;
+  registrado: boolean;
+  motivo_fallo: string | null;
+  created_at: string;
 };
 
 export type Plan = {
