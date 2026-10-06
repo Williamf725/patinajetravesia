@@ -8,12 +8,13 @@ import AsistenciaTab from '@/components/dashboard/AsistenciaTab';
 import PagosTab from '@/components/dashboard/PagosTab';
 import GaleriaTab from '@/components/dashboard/GaleriaTab';
 import InscripcionesTab from '@/components/dashboard/InscripcionesTab';
-import { Users, CreditCard, Image as ImageIcon, LogOut, ClipboardList } from 'lucide-react';
+import QRCodeTab from '@/components/dashboard/QRCodeTab';
+import { Users, CreditCard, Image as ImageIcon, LogOut, ClipboardList, QrCode } from 'lucide-react';
 import { User } from '@supabase/supabase-js';
 
 const ADMIN_EMAIL = 'clubdepatinajetravesia@gmail.com';
 
-type Tab = 'asistencia' | 'pagos' | 'galeria' | 'inscripciones';
+type Tab = 'asistencia' | 'pagos' | 'galeria' | 'inscripciones' | 'qr';
 
 export default function DashboardPage() {
   const [activeTab, setActiveTab] = useState<Tab>('inscripciones');
@@ -89,6 +90,7 @@ export default function DashboardPage() {
             {[
               { id: 'inscripciones', label: 'Inscripciones', icon: ClipboardList },
               { id: 'asistencia', label: 'Asistencia', icon: Users },
+              { id: 'qr', label: 'Código QR', icon: QrCode },
               { id: 'pagos', label: 'Planilla Pagos', icon: CreditCard },
               { id: 'galeria', label: 'Galería Media', icon: ImageIcon },
             ].map((tab) => (
@@ -120,6 +122,7 @@ export default function DashboardPage() {
               >
                 {activeTab === 'inscripciones' && <InscripcionesTab />}
                 {activeTab === 'asistencia' && <AsistenciaTab />}
+                {activeTab === 'qr' && <QRCodeTab />}
                 {activeTab === 'pagos' && <PagosTab />}
                 {activeTab === 'galeria' && <GaleriaTab />}
               </motion.div>
