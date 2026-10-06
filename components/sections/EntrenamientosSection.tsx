@@ -4,6 +4,12 @@ import { motion } from 'framer-motion';
 
 const HORARIOS = [
   {
+    dia: 'MARTES',
+    hora: '7:00 PM a 9:00 PM',
+    color: 'border-hot-pink',
+    rot: -1
+  },
+  {
     dia: 'MIÉRCOLES',
     hora: '2:30 PM a 4:30 PM',
     color: 'border-neon-green',
@@ -43,7 +49,7 @@ export default function EntrenamientosSection() {
           <div className="w-16 h-3 bg-hot-pink mt-3 shadow-brutal" />
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 md:gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 md:gap-6">
           {HORARIOS.map((h, i) => (
             <motion.div
               key={h.dia}
@@ -89,6 +95,23 @@ export default function EntrenamientosSection() {
             </motion.div>
           ))}
         </div>
+
+        {/* Salidas a ruta */}
+        <motion.div
+          initial={{ opacity: 0, y: 30 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          viewport={{ once: true }}
+          className="mt-10 bg-[#131313] border-l-[8px] border-neon-orange p-6 md:p-8 shadow-brutal"
+        >
+          <div className="font-mono text-[9px] text-white/40 uppercase mb-1 tracking-[0.3em]">Adicional</div>
+          <h3 className="font-anton text-2xl md:text-3xl text-white uppercase mb-2">
+            Salidas a <span className="text-neon-orange">Ruta</span>
+          </h3>
+          <p className="font-space text-white/80 text-sm md:text-base max-w-2xl">
+            Hacemos al menos una salida a ruta al mes — a veces dos, según disponibilidad.
+            ¡Súmate y patina la ciudad con el club!
+          </p>
+        </motion.div>
       </div>
     </section>
   );

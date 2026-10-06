@@ -12,6 +12,7 @@ interface Props {
 }
 
 const SCHEDULE_MAPPING: Record<string, string> = {
+  'martes': '7:00 PM a 9:00 PM',
   'miércoles': '2:30 PM a 4:30 PM',
   'jueves': '6:30 PM a 8:30 PM',
   'sábado': '4:00 PM a 6:00 PM'

@@ -18,12 +18,14 @@ import { Alumno, Asistencia, Inscripcion, Plan } from '@/types/database';
 
 const DIAS_CLASE = {
   TODOS: 'Todos',
+  MARTES: 'Martes',
   MIERCOLES: 'Miércoles',
   JUEVES: 'Jueves',
   SABADO: 'Sábado'
 };
 
 const DAY_INDICES: Record<number, string> = {
+  2: 'Martes',
   3: 'Miércoles',
   4: 'Jueves',
   6: 'Sábado'
@@ -75,7 +77,8 @@ export default function AsistenciaTab() {
 
     return todosLosDias.filter(dia => {
       const dayIdx = getDay(dia);
-      if (filtroDia === 'Todos') return [3, 4, 6].includes(dayIdx);
+      if (filtroDia === 'Todos') return [2, 3, 4, 6].includes(dayIdx);
+      if (filtroDia === 'Martes') return dayIdx === 2;
       if (filtroDia === 'Miércoles') return dayIdx === 3;
       if (filtroDia === 'Jueves') return dayIdx === 4;
       if (filtroDia === 'Sábado') return dayIdx === 6;
