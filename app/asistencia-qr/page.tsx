@@ -54,19 +54,23 @@ export default function AsistenciaQRPage() {
         if (alumno) setMiAlumnoId(alumno.id);
       }
 
-      // Lista de alumnos para el selector público
+      // Lista de alumnos para el selector público (orden alfabético)
       const { data } = await supabase.rpc('obtener_alumnos_qr');
-      if (data) setAlumnos(data as AlumnoQR[]);
+      if (data) setAlumnos((data as AlumnoQR[]).sort((a, b) => a.nombre_completo.localeCompare(b.nombre_completo, 'es')));
       setLoading(false);
     };
     init();
   }, [supabase]);
 
+  // Normaliza tildes y mayúsculas para que la búsqueda sea amigable
+  const normalizar = (t: string) =>
+    t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+
   const filtrados = useMemo(() => {
-    const q = busqueda.trim().toLowerCase();
+    const q = normalizar(busqueda.trim());
     if (!q) return alumnos;
     return alumnos.filter(a =>
-      a.nombre_completo.toLowerCase().includes(q) ||
+      normalizar(a.nombre_completo).includes(q) ||
       String(a.numero_alumno).includes(q)
     );
   }, [alumnos, busqueda]);
