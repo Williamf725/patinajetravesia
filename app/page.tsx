@@ -5,6 +5,7 @@ import TvSection from '@/components/sections/TvSection';
 import EsenciaSection from '@/components/sections/EsenciaSection';
 import EntrenamientosSection from '@/components/sections/EntrenamientosSection';
 import UneteSection from '@/components/sections/UneteSection';
+import PlanesSection from '@/components/sections/PlanesSection';
 
 export default function Home() {
   return (
@@ -51,7 +52,7 @@ export default function Home() {
         <div className="absolute inset-0 rounded-full border-4 border-dashed border-white/20 animate-[spin_20s_linear_infinite]" />
 
         <div className="relative w-full h-full flex items-center justify-center">
-          <div className="absolute w-[90%] h-[90%] rounded-full border-8 border-black/40 shadow-brutal-lg overflow-hidden flex items-center justify-center bg-[#131313]/40 backdrop-blur-sm">
+          <div className="absolute w-[90%] h-full rounded-full border-8 border-black/40 shadow-brutal-lg overflow-hidden flex items-center justify-center bg-[#131313]/40 backdrop-blur-sm">
              <div className="text-center font-anton text-white/90 p-8 select-none">
                 <p className="text-xl md:text-3xl border-b-4 border-neon-green pb-2">ADULTOS</p>
                 <p className="text-4xl md:text-6xl pt-2">TRAVESÍA</p>
@@ -64,7 +65,7 @@ export default function Home() {
           </div>
 
           <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-            <div className="w-full h-full rounded-full border-[20px] border-white/10" />
+            <div className="absolute w-full h-full rounded-full border-[20px] border-white/10" />
           </div>
         </div>
       </motion.div>
@@ -79,6 +80,7 @@ export default function Home() {
 
     <EsenciaSection />
     <TvSection />
+    <PlanesSection />
     <EntrenamientosSection />
     <UneteSection />
     </>
