@@ -6,6 +6,8 @@ import Navbar from "@/components/Navbar";
 import Footer from "@/components/Footer";
 import PageTransition from "@/components/PageTransition";
 import CustomCursor from "@/components/CustomCursor";
+import { Toaster } from "sonner";
+import NotificationBridge from "@/components/NotificationBridge";
 
 const anton = Anton({
   weight: "400",
@@ -51,6 +53,7 @@ export default function RootLayout({
     <html lang="es" className={`${anton.variable} ${spaceGrotesk.variable} ${jetbrainsMono.variable}`}>
       <body className="antialiased min-h-screen selection:bg-neon-green selection:text-black bg-black">
         <CustomCursor />
+        <NotificationBridge />
         <Background />
         <Navbar />
         <main className="relative z-0 pt-20">
@@ -59,6 +62,14 @@ export default function RootLayout({
           </PageTransition>
         </main>
         <Footer />
+        <Toaster
+          position="top-center"
+          richColors
+          closeButton
+          toastOptions={{
+            className: 'font-mono border-2 shadow-brutal-lg',
+          }}
+        />
       </body>
     </html>
   );

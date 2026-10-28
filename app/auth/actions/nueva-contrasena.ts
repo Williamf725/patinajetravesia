@@ -70,19 +70,21 @@ export async function cambiarContrasena(prevStateOrFormData: unknown, maybeFormD
     return { error: 'El enlace expiró. Solicita uno nuevo.' }
   }
 
-  // Buscar el user_id en auth.users usando el RPC
-  const { data: authUserId, error: rpcError } = await supabase
-    .rpc('get_user_id_by_email', { user_email: email })
+  // Buscar la cuenta mediante la API administrativa, sin exponer RPC públicas.
+  const { data: usersData, error: usersError } = await supabaseAdmin.auth.admin.listUsers({
+    page: 1,
+    perPage: 1000
+  })
+  const authUser = usersData?.users.find(user => user.email?.toLowerCase() === email)
 
-  if (rpcError || !authUserId) {
-    console.error('Error llamando RPC get_user_id_by_email:', rpcError)
+  if (usersError || !authUser) {
+    console.error('No se pudo identificar la cuenta:', usersError)
     return { error: 'No se pudo identificar la cuenta del usuario.' }
   }
 
-  // Usar admin client para cambiar contraseña en Supabase Auth
   const { error: updateAuthError } = await supabaseAdmin.auth.admin.updateUserById(
-    authUserId,
-    { password: password }
+    authUser.id,
+    { password }
   )
 
   if (updateAuthError) {

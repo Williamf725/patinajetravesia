@@ -38,7 +38,7 @@ export async function guardarPerfil(formData: FormData) {
 
   if (error) {
     console.error('Error guardando perfil:', error.code, error.message)
-    return { error: `Error al guardar: ${error.message}` }
+    return { error: 'No se pudo guardar el perfil. Inténtalo de nuevo.' }
   }
 
   revalidatePath('/portal')
