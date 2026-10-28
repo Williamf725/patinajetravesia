@@ -1,12 +1,10 @@
 'use client';
 
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
-import { QrCode, Search, CheckCircle2, XCircle, LogIn, UserRound } from 'lucide-react';
-
-const ADMIN_EMAIL = 'clubdepatinajetravesia@gmail.com';
+import { QrCode, Search, CheckCircle2, XCircle, UserRound } from 'lucide-react';
 
 type AlumnoQR = { id: string; nombre_completo: string; numero_alumno: number };
 
@@ -25,51 +23,37 @@ const getBogotaToday = () =>
 
 export default function AsistenciaQRPage() {
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
   const [alumnos, setAlumnos] = useState<AlumnoQR[]>([]);
   const [busqueda, setBusqueda] = useState('');
   const [seleccionado, setSeleccionado] = useState<AlumnoQR | null>(null);
   const [resultado, setResultado] = useState<Resultado>(null);
   const [enviando, setEnviando] = useState(false);
 
-  // Sesión iniciada
-  const [sesionEmail, setSesionEmail] = useState<string | null>(null);
-  const [miAlumnoId, setMiAlumnoId] = useState<string | null>(null);
-  const [modo, setModo] = useState<'elegir' | 'login'>('elegir');
-  const [loginEmail, setLoginEmail] = useState('');
-  const [loginPass, setLoginPass] = useState('');
-  const [loginError, setLoginError] = useState('');
-
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const hoy = getBogotaToday();
-  const esAdmin = sesionEmail?.toLowerCase() === ADMIN_EMAIL;
 
-  useEffect(() => {
-    const init = async () => {
-      // ¿Hay sesión iniciada?
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user?.email) {
-        setSesionEmail(user.email);
-        const { data: alumno } = await supabase
-          .from('alumnos')
-          .select('id')
-          .eq('email', user.email.toLowerCase())
-          .maybeSingle();
-        if (alumno) setMiAlumnoId(alumno.id);
-      }
-
-      // Solo el administrador puede consultar la lista completa.
-      if (user?.email?.toLowerCase() === ADMIN_EMAIL) {
-        const { data } = await supabase.rpc('obtener_alumnos_qr');
-        if (data) setAlumnos((data as AlumnoQR[]).sort((a, b) => a.nombre_completo.localeCompare(b.nombre_completo, 'es')));
-      }
-      setLoading(false);
-    };
-    init();
+  const cargarAlumnos = useCallback(async () => {
+    setLoading(true);
+    setLoadError(false);
+    const { data, error } = await supabase.rpc('obtener_alumnos_qr');
+    if (error) {
+      setLoadError(true);
+      setAlumnos([]);
+    } else {
+      setAlumnos(((data as AlumnoQR[]) || []).sort((a, b) =>
+        a.nombre_completo.localeCompare(b.nombre_completo, 'es')
+      ));
+    }
+    setLoading(false);
   }, [supabase]);
 
-  // Normaliza tildes y mayúsculas para que la búsqueda sea amigable
-  const normalizar = (t: string) =>
-    t.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+  useEffect(() => {
+    cargarAlumnos();
+  }, [cargarAlumnos]);
+
+  const normalizar = (texto: string) =>
+    texto.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
 
   const filtrados = useMemo(() => {
     const q = normalizar(busqueda.trim());
@@ -81,59 +65,22 @@ export default function AsistenciaQRPage() {
   }, [alumnos, busqueda]);
 
   const registrar = async (alumnoId: string) => {
-    if (!sesionEmail) {
-      setResultado({ ok: false, error: 'Inicia sesión para registrar tu asistencia.' });
-      return;
-    }
     setEnviando(true);
     setResultado(null);
     const { data, error } = await supabase.rpc('registrar_asistencia_qr', {
       p_alumno_id: alumnoId,
     });
     if (error) {
-      setResultado({ ok: false, error: 'Error de conexión. Intenta de nuevo.' });
+      setResultado({ ok: false, error: 'No pudimos registrar la asistencia. Revisa tu conexión e inténtalo de nuevo.' });
     } else {
       setResultado(data as Resultado);
     }
     setEnviando(false);
   };
 
-  const handleLogin = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setLoginError('');
-    const { error } = await supabase.auth.signInWithPassword({
-      email: loginEmail.trim().toLowerCase(),
-      password: loginPass,
-    });
-    if (error) {
-      setLoginError('Correo o contraseña incorrectos.');
-      return;
-    }
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user?.email) return;
-    setSesionEmail(user.email);
-    if (user.email.toLowerCase() === ADMIN_EMAIL) {
-      const { data } = await supabase.rpc('obtener_alumnos_qr');
-      if (data) setAlumnos((data as AlumnoQR[]).sort((a, b) => a.nombre_completo.localeCompare(b.nombre_completo, 'es')));
-      setLoading(false);
-      return;
-    }
-    const { data: alumno } = await supabase
-      .from('alumnos')
-      .select('id, nombre_completo')
-      .eq('email', user.email.toLowerCase())
-      .maybeSingle();
-    if (alumno) {
-      setMiAlumnoId(alumno.id);
-    } else {
-      setLoginError('Esta cuenta no tiene una ficha de alumno vinculada.');
-    }
-  };
+  const fechaBonita = (fecha?: string) =>
+    format(parseISO(fecha || hoy), "EEEE d 'de' MMMM 'de' yyyy", { locale: es });
 
-  const fechaBonita = (f?: string) =>
-    f ? format(parseISO(f), 'EEEE d \'de\' MMMM', { locale: es }) : format(parseISO(hoy), 'EEEE d \'de\' MMMM', { locale: es });
-
-  // ---------- Vista de resultado ----------
   if (resultado) {
     return (
       <div className="min-h-screen bg-[#131313] text-white flex items-center justify-center p-6">
@@ -149,9 +96,7 @@ export default function AsistenciaQRPage() {
           <p className="font-mono text-sm text-white/70 uppercase mb-1">{resultado.nombre}</p>
           <p className="font-mono text-xs text-white/40 uppercase mb-4">{fechaBonita(resultado.fecha)}</p>
           {resultado.ok && typeof resultado.registrados_hoy === 'number' && (
-            <p className={`font-anton text-lg uppercase mb-2 ${
-              resultado.clase_confirmada ? 'text-neon-green' : 'text-yellow-400'
-            }`}>
+            <p className={`font-anton text-lg uppercase mb-2 ${resultado.clase_confirmada ? 'text-neon-green' : 'text-yellow-400'}`}>
               {resultado.clase_confirmada
                 ? '¡Clase confirmada!'
                 : `Clase en espera (${resultado.registrados_hoy}/4)`}
@@ -164,66 +109,61 @@ export default function AsistenciaQRPage() {
             onClick={() => { setResultado(null); setSeleccionado(null); }}
             className="btn-tape w-full py-3 font-anton text-lg tracking-widest"
           >
-            VOLVER
+            REGISTRAR OTRA ASISTENCIA
           </button>
         </div>
       </div>
     );
   }
 
-  // ---------- Vista principal ----------
   return (
-    <div className="min-h-screen bg-[#131313] text-white flex flex-col items-center justify-center p-6">
+    <main className="min-h-screen bg-[#131313] text-white flex flex-col items-center justify-center p-6">
       <div className="max-w-md w-full">
         <div className="text-center mb-8">
           <QrCode size={40} className="text-neon-green mx-auto mb-3" />
           <h1 className="font-anton text-4xl uppercase leading-none">
             Registro de <span className="text-neon-green">asistencia</span>
           </h1>
-          <p className="font-mono text-xs text-white/40 mt-2 uppercase">
-            Club de Patinaje Travesía — {fechaBonita()}
+          <p className="font-mono text-xs text-white/50 mt-3 uppercase">
+            Club de Patinaje Travesía
+          </p>
+          <p className="font-mono text-xs text-neon-green mt-1 uppercase">
+            {fechaBonita()}
           </p>
         </div>
 
-        {/* Opción A: sesión iniciada */}
-        {sesionEmail && miAlumnoId && (
-          <div className="bg-[#1a1a1a] border-4 border-white p-6 shadow-brutal-lg mb-6">
-            <p className="font-mono text-[10px] text-white/40 uppercase mb-1">Sesión iniciada</p>
-            <p className="font-anton text-xl uppercase mb-4 truncate">{sesionEmail}</p>
-            <button
-              onClick={() => registrar(miAlumnoId)}
-              disabled={enviando}
-              className="w-full bg-neon-green text-black font-anton text-2xl py-4 hover:brightness-110 disabled:opacity-50 flex items-center justify-center gap-2"
-            >
-              <CheckCircle2 size={20} /> {enviando ? 'REGISTRANDO...' : 'MARCAR MI ASISTENCIA'}
-            </button>
-          </div>
-        )}
-
-        {/* Selector completo exclusivo del administrador */}
-        {esAdmin && (
         <div className="bg-[#1a1a1a] border-4 border-white p-6 shadow-brutal-lg">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-anton text-xl uppercase flex items-center gap-2">
-              <UserRound className="text-neon-green" size={20} /> Elige un alumno
+              <UserRound className="text-neon-green" size={20} /> Elige tu nombre
             </h2>
           </div>
 
           {!seleccionado ? (
             <>
-              <div className="flex items-center gap-2 bg-black border-2 border-white/20 p-2 mb-3">
+              <label htmlFor="buscar-alumno" className="sr-only">Buscar por nombre o número de alumno</label>
+              <div className="flex items-center gap-2 bg-black border-2 border-white/20 p-2 mb-3 focus-within:border-neon-green">
                 <Search size={16} className="text-white/40" />
                 <input
-                  type="text"
+                  id="buscar-alumno"
+                  type="search"
+                  autoComplete="off"
                   value={busqueda}
                   onChange={e => setBusqueda(e.target.value)}
                   placeholder="Busca tu nombre o número..."
-                  className="bg-transparent flex-1 outline-none font-mono text-sm uppercase placeholder:text-white/20"
+                  className="bg-transparent flex-1 min-w-0 outline-none font-mono text-sm uppercase placeholder:text-white/20"
                 />
               </div>
-              <div className="max-h-64 overflow-y-auto border-2 border-white/10">
+              <div className="max-h-72 overflow-y-auto border-2 border-white/10">
                 {loading ? (
                   <p className="p-4 text-center font-mono text-xs text-white/40 animate-pulse">Cargando alumnos...</p>
+                ) : loadError ? (
+                  <div className="p-4 text-center">
+                    <p className="font-mono text-xs text-hot-pink uppercase mb-3">No pudimos cargar la lista.</p>
+                    <button onClick={cargarAlumnos} className="border border-white/30 px-4 py-2 font-mono text-xs hover:bg-white/10">
+                      REINTENTAR
+                    </button>
+                  </div>
                 ) : filtrados.length === 0 ? (
                   <p className="p-4 text-center font-mono text-xs text-white/40 uppercase">Sin resultados</p>
                 ) : (
@@ -241,12 +181,14 @@ export default function AsistenciaQRPage() {
             </>
           ) : (
             <div className="text-center">
-              <p className="font-mono text-[10px] text-white/40 uppercase mb-1">Registrando como</p>
-              <p className="font-anton text-2xl uppercase text-neon-green mb-6">{seleccionado.nombre_completo}</p>
+              <p className="font-mono text-[10px] text-white/40 uppercase mb-1">Registrando asistencia de</p>
+              <p className="font-anton text-2xl uppercase text-neon-green mb-2">{seleccionado.nombre_completo}</p>
+              <p className="font-mono text-xs text-white/50 uppercase mb-6">{fechaBonita()}</p>
               <div className="flex gap-3">
                 <button
                   onClick={() => setSeleccionado(null)}
-                  className="flex-1 border border-white/20 py-3 font-mono text-xs hover:bg-white/5"
+                  disabled={enviando}
+                  className="flex-1 border border-white/20 py-3 font-mono text-xs hover:bg-white/5 disabled:opacity-50"
                 >
                   CAMBIAR
                 </button>
@@ -255,60 +197,17 @@ export default function AsistenciaQRPage() {
                   disabled={enviando}
                   className="flex-1 bg-neon-green text-black font-anton text-xl py-3 hover:brightness-110 disabled:opacity-50"
                 >
-                  {enviando ? '...' : 'CONFIRMAR'}
+                  {enviando ? 'REGISTRANDO...' : 'CONFIRMAR'}
                 </button>
               </div>
             </div>
           )}
         </div>
-        )}
 
-        {/* Alternar a login */}
-        {!sesionEmail && (
-          <div className="mt-6">
-            {modo === 'login' ? (
-              <form onSubmit={handleLogin} className="bg-[#1a1a1a] border-4 border-white p-6 shadow-brutal-lg">
-                <h2 className="font-anton text-xl uppercase flex items-center gap-2 mb-4">
-                  <LogIn className="text-neon-green" size={20} /> Iniciar sesión
-                </h2>
-                <input
-                  type="email"
-                  required
-                  value={loginEmail}
-                  onChange={e => setLoginEmail(e.target.value)}
-                  placeholder="Correo"
-                  className="w-full bg-transparent border-b-2 border-white/20 p-2 mb-3 outline-none focus:border-neon-green font-mono text-sm"
-                />
-                <input
-                  type="password"
-                  required
-                  value={loginPass}
-                  onChange={e => setLoginPass(e.target.value)}
-                  placeholder="Contraseña"
-                  className="w-full bg-transparent border-b-2 border-white/20 p-2 mb-3 outline-none focus:border-neon-green font-mono text-sm"
-                />
-                {loginError && <p className="font-mono text-xs text-hot-pink mb-3">{loginError}</p>}
-                <div className="flex gap-3">
-                  <button type="button" onClick={() => setModo('elegir')} className="flex-1 border border-white/20 py-3 font-mono text-xs hover:bg-white/5">
-                    CANCELAR
-                  </button>
-                  <button type="submit" className="flex-1 bg-white text-black font-anton text-lg py-3 hover:bg-neon-green">
-                    ENTRAR
-                  </button>
-                </div>
-              </form>
-            ) : (
-              <button
-                onClick={() => setModo('login')}
-                className="w-full font-mono text-xs text-white/40 hover:text-neon-green uppercase tracking-widest py-2"
-              >
-                ¿Tienes cuenta? Inicia sesión aquí
-              </button>
-            )}
-          </div>
-        )}
+        <p className="font-mono text-[10px] text-white/40 text-center uppercase leading-relaxed mt-5">
+          La clase queda confirmada cuando se registran al menos 4 estudiantes.
+        </p>
       </div>
-    </div>
+    </main>
   );
 }
-
