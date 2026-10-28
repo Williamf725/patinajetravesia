@@ -53,7 +53,7 @@ export default function AsistenciaQRPage() {
   }, [cargarAlumnos]);
 
   const normalizar = (texto: string) =>
-    texto.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '');
+    texto.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\s+/g, ' ').trim();
 
   const filtrados = useMemo(() => {
     const q = normalizar(busqueda.trim());
