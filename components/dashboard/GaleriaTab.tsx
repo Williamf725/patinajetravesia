@@ -8,11 +8,14 @@ import { createClient } from '@/lib/supabase/client';
 import { Upload, Trash2, FileVideo, FileImage, Loader2 } from 'lucide-react';
 import Image from 'next/image';
 import { Galeria } from '@/types/database';
+import { ConfirmDialog } from './ActionDialogs';
 
 export default function GaleriaTab() {
   const [items, setItems] = useState<Galeria[]>([]);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
+  const [itemEliminar, setItemEliminar] = useState<Galeria | null>(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const supabase = createClient();
 
   const fetchMedia = useCallback(async () => {
@@ -89,14 +92,18 @@ export default function GaleriaTab() {
     }
   });
 
-  const handleDelete = async (id: string, publicId: string) => {
-    if (!confirm('¿Eliminar este archivo?')) return;
+  const handleDelete = async () => {
+    if (!itemEliminar) return;
+    setIsDeleting(true);
     try {
-      await deleteFromCloudinary(publicId, id);
+      await deleteFromCloudinary(itemEliminar.public_id, itemEliminar.id);
+      setItemEliminar(null);
       fetchMedia();
     } catch (err) {
       console.error(err);
       alert('Error al eliminar');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -157,7 +164,7 @@ export default function GaleriaTab() {
                   <video src={item.url} className="w-full h-full object-cover opacity-60" />
                   <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                      <button
-                      onClick={() => handleDelete(item.id, item.public_id)}
+                      onClick={() => setItemEliminar(item)}
                       className="bg-hot-pink text-white p-3 hover:scale-110 transition-transform"
                      >
                         <Trash2 size={24} />
@@ -187,7 +194,7 @@ export default function GaleriaTab() {
                   <Image src={item.url} alt={item.titulo} fill className="object-cover transition-transform group-hover:scale-110" />
                   <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
                      <button
-                      onClick={() => handleDelete(item.id, item.public_id)}
+                      onClick={() => setItemEliminar(item)}
                       className="bg-hot-pink text-white p-2 hover:scale-110 transition-transform"
                      >
                         <Trash2 size={16} />
@@ -200,6 +207,17 @@ export default function GaleriaTab() {
         </section>
 
       </div>
+
+      {itemEliminar && (
+        <ConfirmDialog
+          title="Eliminar archivo"
+          description={`¿Eliminar “${itemEliminar.titulo}”? Esta acción no se puede deshacer.`}
+          onCancel={() => setItemEliminar(null)}
+          onConfirm={handleDelete}
+          busy={isDeleting}
+        />
+      )}
     </div>
   );
 }
+
