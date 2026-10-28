@@ -4,8 +4,42 @@ import { createServerClient } from '@/lib/supabase/server'
 import { revalidatePath } from 'next/cache'
 import { enviarConfirmacionPlan, enviarNotificacionAdmin, enviarPlanPorAcabar } from '@/lib/email/resend'
 
+async function getOwnAlumno(alumnoId: string) {
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user?.email) throw new Error('Debes iniciar sesión para continuar.')
+
+  const { data: alumno } = await supabase
+    .from('alumnos')
+    .select('*')
+    .eq('id', alumnoId)
+    .eq('email', user.email.toLowerCase())
+    .single()
+
+  if (!alumno) throw new Error('No tienes permiso para acceder a esta información.')
+  return { supabase, alumno }
+}
+
+async function getOwnInscripcion(inscripcionId: string) {
+  const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user?.email) throw new Error('Debes iniciar sesión para continuar.')
+
+  const { data: inscripcion } = await supabase
+    .from('inscripciones')
+    .select('id, alumno_id, alumno:alumnos!inner(email)')
+    .eq('id', inscripcionId)
+    .eq('alumno.email', user.email.toLowerCase())
+    .single()
+
+  if (!inscripcion) throw new Error('No tienes permiso para modificar esta inscripción.')
+  return { supabase, inscripcion }
+}
+
 export async function getAlumnoByEmail(email: string) {
   const supabase = await createServerClient()
+  const { data: { user } } = await supabase.auth.getUser()
+  if (!user?.email || user.email.toLowerCase() !== email.toLowerCase()) return null
   const { data, error } = await supabase
     .from('alumnos')
     .select('*')
@@ -17,7 +51,7 @@ export async function getAlumnoByEmail(email: string) {
 }
 
 export async function selectPlan(alumnoId: string, planId: string) {
-  const supabase = await createServerClient()
+  const { supabase } = await getOwnAlumno(alumnoId)
 
   const now = new Date()
   const mes = now.toLocaleString('es-ES', { month: 'long' }).toLowerCase()
@@ -79,7 +113,7 @@ export async function getPlanes() {
 }
 
 export async function getInscripcionActual(alumnoId: string) {
-  const supabase = await createServerClient()
+  const { supabase } = await getOwnAlumno(alumnoId)
   const now = new Date()
   const mes = now.toLocaleString('es-ES', { month: 'long' }).toLowerCase()
   const anio = now.getFullYear()
@@ -146,7 +180,7 @@ export async function getInscripcionActual(alumnoId: string) {
 }
 
 export async function getHistorialInscripciones(alumnoId: string) {
-  const supabase = await createServerClient()
+  const { supabase } = await getOwnAlumno(alumnoId)
   const { data } = await supabase
     .from('inscripciones')
     .select('*, plan:planes(*)')
@@ -157,7 +191,7 @@ export async function getHistorialInscripciones(alumnoId: string) {
 }
 
 export async function updateComprobante(inscripcionId: string, url: string) {
-  const supabase = await createServerClient()
+  const { supabase, inscripcion } = await getOwnInscripcion(inscripcionId)
   const { error } = await supabase
     .from('inscripciones')
     .update({
@@ -165,13 +199,14 @@ export async function updateComprobante(inscripcionId: string, url: string) {
       estado: 'pendiente' // Asegurar que el estado vuelva a pendiente si se sube nuevo comprobante
     })
     .eq('id', inscripcionId)
+    .eq('alumno_id', inscripcion.alumno_id)
 
   if (error) throw error
   revalidatePath('/portal')
 }
 
 export async function cambiarPlan(inscripcionId: string, planId: string) {
-  const supabase = await createServerClient()
+  const { supabase, inscripcion } = await getOwnInscripcion(inscripcionId)
 
   const { data: plan } = await supabase.from('planes').select('*').eq('id', planId).single()
   if (!plan) throw new Error('Plan no encontrado')
@@ -190,6 +225,7 @@ export async function cambiarPlan(inscripcionId: string, planId: string) {
       fecha_vencimiento: fechaVencimiento.toISOString()
     })
     .eq('id', inscripcionId)
+    .eq('alumno_id', inscripcion.alumno_id)
 
   if (error) throw error
   revalidatePath('/portal')
