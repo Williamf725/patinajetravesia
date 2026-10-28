@@ -2,6 +2,7 @@
 
 import { createServerClient } from '@/lib/supabase/server'
 import { supabaseAdmin } from '@/lib/supabase/admin'
+import { allowRequest, isCompromisedPassword } from '@/lib/security'
 
 export async function cambiarContrasena(prevStateOrFormData: unknown, maybeFormData?: FormData) {
   // Soporta tanto llamadas directas como useActionState (prevState, formData)
@@ -43,6 +44,14 @@ export async function cambiarContrasena(prevStateOrFormData: unknown, maybeFormD
 
   if (!/\d/.test(password)) {
     return { error: 'Debe incluir al menos un número.' }
+  }
+
+  if (!(await allowRequest('nueva-contrasena', email, 6, 60 * 60))) {
+    return { error: 'Demasiados intentos. Espera una hora e inténtalo de nuevo.' }
+  }
+
+  if (await isCompromisedPassword(password)) {
+    return { error: 'Esta contraseña aparece en filtraciones conocidas. Elige una diferente.' }
   }
 
   const supabase = await createServerClient()
@@ -107,3 +116,4 @@ export async function cambiarContrasena(prevStateOrFormData: unknown, maybeFormD
 
   return { success: true }
 }
+

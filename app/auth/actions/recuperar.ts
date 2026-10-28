@@ -4,6 +4,7 @@ import crypto from 'crypto'
 import { createServerClient } from '@/lib/supabase/server'
 import { enviarCorreo } from '@/lib/email/mailer'
 import { plantillaRecuperacion } from '@/lib/email/plantillas'
+import { allowRequest } from '@/lib/security'
 
 export async function solicitarRecuperacion(prevStateOrFormData: unknown, maybeFormData?: FormData) {
   // Soporta tanto llamadas directas como firmas de useActionState (prevState, formData)
@@ -22,6 +23,10 @@ export async function solicitarRecuperacion(prevStateOrFormData: unknown, maybeF
 
   if (!email) {
     return { error: 'Ingresa tu correo electrónico' }
+  }
+
+  if (!(await allowRequest('recuperar', email, 4, 60 * 60))) {
+    return { error: 'Demasiadas solicitudes. Espera una hora e inténtalo de nuevo.' }
   }
 
   const supabase = await createServerClient()
@@ -68,3 +73,4 @@ export async function solicitarRecuperacion(prevStateOrFormData: unknown, maybeF
 
   return { success: true }
 }
+

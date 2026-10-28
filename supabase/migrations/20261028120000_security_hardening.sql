@@ -105,3 +105,4 @@ REVOKE ALL ON FUNCTION public.obtener_alumnos_qr() FROM PUBLIC, anon;
 REVOKE ALL ON FUNCTION public.registrar_asistencia_qr(UUID) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.obtener_alumnos_qr() TO authenticated;
 GRANT EXECUTE ON FUNCTION public.registrar_asistencia_qr(UUID) TO authenticated;
+

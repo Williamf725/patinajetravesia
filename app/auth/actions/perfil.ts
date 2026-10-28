@@ -47,3 +47,4 @@ export async function guardarPerfil(formData: FormData) {
 
 /** @deprecated Use guardarPerfil instead */
 export const updatePerfil = guardarPerfil;
+

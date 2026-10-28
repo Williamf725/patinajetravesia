@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation'
 import { createServerClient } from '@/lib/supabase/server'
 import { headers } from 'next/headers'
 import { enviarBienvenida } from '@/lib/email/resend'
+import { allowRequest, isCompromisedPassword } from '@/lib/security'
 
 export async function loginAction(_prevState: unknown, formData: FormData) {
   const email = formData.get('email') as string
@@ -12,6 +13,10 @@ export async function loginAction(_prevState: unknown, formData: FormData) {
 
   if (!email || !password) {
     return { error: 'Completa todos los campos' }
+  }
+
+  if (!(await allowRequest('login', email, 8, 15 * 60))) {
+    return { error: 'Demasiados intentos. Espera 15 minutos e intenta de nuevo.' }
   }
 
   const supabase = await createServerClient()
@@ -78,6 +83,14 @@ export async function registrarAlumno(_prevState: unknown, formData: FormData) {
     return { error: 'Todos los campos son obligatorios.', field: 'general' }
   }
 
+  if (!(await allowRequest('registro', email, 5, 60 * 60))) {
+    return { error: 'Demasiados registros desde esta conexión. Espera una hora e inténtalo de nuevo.', field: 'general' }
+  }
+
+  if (await isCompromisedPassword(password)) {
+    return { error: 'Esta contraseña aparece en filtraciones conocidas. Elige una diferente.', field: 'password' }
+  }
+
   // 1. Create Auth User
   const { data: authData, error: authError } = await supabase.auth.signUp({
     email,
@@ -113,7 +126,7 @@ export async function registrarAlumno(_prevState: unknown, formData: FormData) {
     }
 
     console.error('Auth error desconocido:', authError.code, authError.message)
-    return { error: `Error al crear la cuenta: ${authError.message}`, field: 'general' }
+    return { error: 'No pudimos crear la cuenta. Inténtalo de nuevo en unos minutos.', field: 'general' }
   }
 
   if (!authData.user) return { error: 'Error al crear usuario', field: 'general' }
@@ -158,3 +171,4 @@ export async function signOut() {
   revalidatePath('/', 'layout')
   return redirect('/')
 }
+

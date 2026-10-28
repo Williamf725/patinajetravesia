@@ -230,3 +230,4 @@ export async function cambiarPlan(inscripcionId: string, planId: string) {
   if (error) throw error
   revalidatePath('/portal')
 }
+
