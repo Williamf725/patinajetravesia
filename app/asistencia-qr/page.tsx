@@ -6,6 +6,8 @@ import { format, parseISO } from 'date-fns';
 import { es } from 'date-fns/locale';
 import { QrCode, Search, CheckCircle2, XCircle, LogIn, UserRound } from 'lucide-react';
 
+const ADMIN_EMAIL = 'clubdepatinajetravesia@gmail.com';
+
 type AlumnoQR = { id: string; nombre_completo: string; numero_alumno: number };
 
 type Resultado = {
@@ -39,6 +41,7 @@ export default function AsistenciaQRPage() {
 
   const supabase = createClient();
   const hoy = getBogotaToday();
+  const esAdmin = sesionEmail?.toLowerCase() === ADMIN_EMAIL;
 
   useEffect(() => {
     const init = async () => {
@@ -54,9 +57,11 @@ export default function AsistenciaQRPage() {
         if (alumno) setMiAlumnoId(alumno.id);
       }
 
-      // Lista de alumnos para el selector público (orden alfabético)
-      const { data } = await supabase.rpc('obtener_alumnos_qr');
-      if (data) setAlumnos((data as AlumnoQR[]).sort((a, b) => a.nombre_completo.localeCompare(b.nombre_completo, 'es')));
+      // Solo el administrador puede consultar la lista completa.
+      if (user?.email?.toLowerCase() === ADMIN_EMAIL) {
+        const { data } = await supabase.rpc('obtener_alumnos_qr');
+        if (data) setAlumnos((data as AlumnoQR[]).sort((a, b) => a.nombre_completo.localeCompare(b.nombre_completo, 'es')));
+      }
       setLoading(false);
     };
     init();
@@ -76,6 +81,10 @@ export default function AsistenciaQRPage() {
   }, [alumnos, busqueda]);
 
   const registrar = async (alumnoId: string) => {
+    if (!sesionEmail) {
+      setResultado({ ok: false, error: 'Inicia sesión para registrar tu asistencia.' });
+      return;
+    }
     setEnviando(true);
     setResultado(null);
     const { data, error } = await supabase.rpc('registrar_asistencia_qr', {
@@ -103,6 +112,12 @@ export default function AsistenciaQRPage() {
     const { data: { user } } = await supabase.auth.getUser();
     if (!user?.email) return;
     setSesionEmail(user.email);
+    if (user.email.toLowerCase() === ADMIN_EMAIL) {
+      const { data } = await supabase.rpc('obtener_alumnos_qr');
+      if (data) setAlumnos((data as AlumnoQR[]).sort((a, b) => a.nombre_completo.localeCompare(b.nombre_completo, 'es')));
+      setLoading(false);
+      return;
+    }
     const { data: alumno } = await supabase
       .from('alumnos')
       .select('id, nombre_completo')
@@ -185,11 +200,12 @@ export default function AsistenciaQRPage() {
           </div>
         )}
 
-        {/* Opción B: elegir nombre de la lista */}
+        {/* Selector completo exclusivo del administrador */}
+        {esAdmin && (
         <div className="bg-[#1a1a1a] border-4 border-white p-6 shadow-brutal-lg">
           <div className="flex items-center justify-between mb-4">
             <h2 className="font-anton text-xl uppercase flex items-center gap-2">
-              <UserRound className="text-neon-green" size={20} /> ¿Sin sesión? Elige tu nombre
+              <UserRound className="text-neon-green" size={20} /> Elige un alumno
             </h2>
           </div>
 
@@ -245,6 +261,7 @@ export default function AsistenciaQRPage() {
             </div>
           )}
         </div>
+        )}
 
         {/* Alternar a login */}
         {!sesionEmail && (
