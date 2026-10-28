@@ -1,13 +1,18 @@
 'use client';
 
-import React, { useState, useActionState } from 'react';
+import React, { useEffect, useState, useActionState } from 'react';
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { registrarAlumno } from '@/app/auth/actions';
 
 export default function RegistroPage() {
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
+  const [selectedPlan, setSelectedPlan] = useState('');
   const [state, formAction, isPending] = useActionState(registrarAlumno, null);
+
+  useEffect(() => {
+    setSelectedPlan(new URLSearchParams(window.location.search).get('plan') || '');
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -93,6 +98,16 @@ export default function RegistroPage() {
             NUEVA <br /><span className="text-neon-green">CUENTA</span>
           </h1>
         </div>
+
+        {selectedPlan && (
+          <div className="mb-8 border-2 border-neon-green bg-neon-green/5 p-4" role="status">
+            <p className="font-mono text-[10px] uppercase tracking-widest text-neon-green">Plan elegido</p>
+            <p className="mt-1 font-anton text-xl uppercase text-white">{selectedPlan}</p>
+            <p className="mt-2 font-mono text-[10px] leading-relaxed text-white/50">
+              Podrás confirmarlo o cambiarlo desde tu portal después de crear tu cuenta.
+            </p>
+          </div>
+        )}
 
         <form onSubmit={handleSubmit} className="space-y-6">
           <div className="grid grid-cols-2 gap-4">
@@ -206,7 +221,7 @@ export default function RegistroPage() {
                   'Enero','Febrero','Marzo','Abril','Mayo','Junio',
                   'Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'
                 ].map((m, i) => (
-                  <option key={i} value={i + 1} className="bg-black">{m}</option>
+                  <option key={m} value={i + 1} className="bg-black">{m}</option>
                 ))}
               </select>
 
@@ -276,3 +291,4 @@ export default function RegistroPage() {
     </div>
   );
 }
+

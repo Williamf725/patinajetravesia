@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { createClient } from '@/lib/supabase/client';
 import PlanesClient from './PlanesClient';
 
@@ -14,29 +14,39 @@ interface PlanFromDb {
 export default function PlanesSection() {
   const [planes, setPlanes] = useState<PlanFromDb[]>([]);
   const [loaded, setLoaded] = useState(false);
+  const [loadError, setLoadError] = useState(false);
 
-  useEffect(() => {
-    const loadPlanes = async () => {
-      const supabase = createClient();
-      const { data, error } = await supabase
-        .from('planes')
-        .select('nombre, descripcion, precio, clases_incluidas')
-        .eq('activo', true)
-        .order('precio', { ascending: true });
+  const loadPlanes = useCallback(async () => {
+    setLoaded(false);
+    setLoadError(false);
+    const supabase = createClient();
+    const { data, error } = await supabase
+      .from('planes')
+      .select('nombre, descripcion, precio, clases_incluidas')
+      .eq('activo', true)
+      .order('precio', { ascending: true });
 
-      if (error) {
-        console.error('No se pudieron cargar los planes:', error.message);
-        setPlanes([]);
-      } else {
-        setPlanes(data || []);
-      }
-      setLoaded(true);
-    };
-
-    loadPlanes();
+    if (error) {
+      console.error('No se pudieron cargar los planes:', error.message);
+      setPlanes([]);
+      setLoadError(true);
+    } else {
+      setPlanes(data || []);
+    }
+    setLoaded(true);
   }, []);
 
-  if (!loaded || planes.length === 0) return null;
+  useEffect(() => {
+    loadPlanes();
+  }, [loadPlanes]);
 
-  return <PlanesClient planes={planes} />;
+  return (
+    <PlanesClient
+      planes={planes}
+      loading={!loaded}
+      loadError={loadError}
+      onRetry={loadPlanes}
+    />
+  );
 }
+

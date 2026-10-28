@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import Link from 'next/link';
 
 interface PlanFromDb {
   nombre: string;
@@ -11,9 +12,12 @@ interface PlanFromDb {
 
 interface PlanesClientProps {
   planes: PlanFromDb[];
+  loading?: boolean;
+  loadError?: boolean;
+  onRetry?: () => void;
 }
 
-export default function PlanesClient({ planes }: PlanesClientProps) {
+export default function PlanesClient({ planes, loading = false, loadError = false, onRetry }: PlanesClientProps) {
   return (
     <section style={{ background: '#0a0a0a', padding: '80px 24px' }}>
       <div style={{ maxWidth: '1100px', margin: '0 auto' }}>
@@ -35,6 +39,30 @@ export default function PlanesClient({ planes }: PlanesClientProps) {
           gap: '16px',
           marginBottom: '48px',
         }}>
+          {loading && (
+            <p role="status" style={{ color: '#aaa', fontFamily: 'Space Grotesk', gridColumn: '1 / -1', textAlign: 'center' }}>
+              Cargando planes…
+            </p>
+          )}
+          {loadError && !loading && (
+            <div role="alert" style={{ gridColumn: '1 / -1', textAlign: 'center', padding: '24px', border: '1px solid #333' }}>
+              <p style={{ color: '#fff', fontFamily: 'Space Grotesk', marginBottom: '16px' }}>
+                No pudimos cargar los planes. Inténtalo de nuevo.
+              </p>
+              <button
+                type="button"
+                onClick={onRetry}
+                style={{ background: '#00ff88', color: '#000', border: 0, padding: '12px 24px', fontFamily: 'Anton', letterSpacing: '2px', cursor: 'pointer' }}
+              >
+                REINTENTAR
+              </button>
+            </div>
+          )}
+          {!loading && !loadError && planes.length === 0 && (
+            <p style={{ color: '#aaa', fontFamily: 'Space Grotesk', gridColumn: '1 / -1', textAlign: 'center' }}>
+              No hay planes disponibles en este momento.
+            </p>
+          )}
           {planes.map((plan, i) => {
             // Animación tipo resorte escalonada idéntica al estilo de EntrenamientosSection.tsx
             const rotations = [-2, 1, -1, 2];
@@ -62,6 +90,7 @@ export default function PlanesClient({ planes }: PlanesClientProps) {
                   boxShadow: i === 2 ? '6px 6px 0 #ff2d78' : 'none',
                   padding: '32px 24px',
                   position: 'relative',
+                  cursor: 'pointer',
                 }}
               >
                 {/* Badge destacado para el plan más popular */}
@@ -112,6 +141,11 @@ export default function PlanesClient({ planes }: PlanesClientProps) {
                   fontSize: '14px', margin: 0 }}>
                   ✓ Seguro contra accidentes incluido
                 </p>
+                <Link
+                  href={`/registro?plan=${encodeURIComponent(plan.nombre)}`}
+                  aria-label={`Inscribirme en ${plan.nombre}`}
+                  style={{ position: 'absolute', inset: 0, zIndex: 20 }}
+                />
               </motion.div>
             );
           })}
@@ -137,9 +171,11 @@ export default function PlanesClient({ planes }: PlanesClientProps) {
         </div>
 
         {/* CTA */}
-        <div style={{ textAlign: 'center', marginTop: '48px' }}>
-          <a href="https://wa.me/573222508676"
-            target="_blank" rel="noopener noreferrer"
+        <div style={{
+          display: 'flex', justifyContent: 'center', alignItems: 'center',
+          gap: '20px', flexWrap: 'wrap', marginTop: '48px',
+        }}>
+          <Link href="/registro"
             style={{
               display: 'inline-block',
               background: '#00ff88', color: '#000',
@@ -150,9 +186,22 @@ export default function PlanesClient({ planes }: PlanesClientProps) {
               boxShadow: '4px 4px 0 #ff2d78',
             }}>
             INSCRÍBETE AHORA
+          </Link>
+          <a href="https://wa.me/573222508676"
+            target="_blank" rel="noopener noreferrer"
+            style={{
+              display: 'inline-block',
+              background: 'transparent', color: '#fff',
+              fontFamily: 'Anton', fontSize: '16px',
+              letterSpacing: '2px', padding: '16px 32px',
+              textDecoration: 'none',
+              border: '3px solid #ff2d78',
+            }}>
+            ESCRÍBENOS POR WHATSAPP
           </a>
         </div>
       </div>
     </section>
   );
 }
+
