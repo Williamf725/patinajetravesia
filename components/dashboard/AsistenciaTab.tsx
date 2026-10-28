@@ -15,6 +15,7 @@ import { es } from 'date-fns/locale';
 import * as XLSX from 'xlsx';
 import { Plus, Save, Download, Trash2, ShieldCheck, Fingerprint, Phone, User as UserIcon } from 'lucide-react';
 import { Alumno, Asistencia, Inscripcion, Plan } from '@/types/database';
+import { ConfirmDialog, NameDialog } from './ActionDialogs';
 
 const DIAS_CLASE = {
   TODOS: 'Todos',
@@ -46,6 +47,10 @@ export default function AsistenciaTab() {
   const [newAlumno, setNewAlumno] = useState({ nombre: '', apellido: '', email: '', tipo_documento: '', numero_documento: '', telefono: '' });
   const [isSaving, setIsSaving] = useState(false);
   const [alumnoModal, setAlumnoModal] = useState<AlumnoConInscripcion | null>(null);
+  const [alumnoEliminar, setAlumnoEliminar] = useState<AlumnoConInscripcion | null>(null);
+  const [alumnoRenombrar, setAlumnoRenombrar] = useState<AlumnoConInscripcion | null>(null);
+  const [nombreEditado, setNombreEditado] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const supabase = createClient();
 
@@ -153,15 +158,19 @@ export default function AsistenciaTab() {
     }
   };
 
-  const handleDeleteAlumno = async (id: string, nombre: string) => {
-    if (confirm(`¿Estás seguro de que deseas eliminar a ${nombre}? Esta acción no se puede deshacer.`)) {
-      const { error } = await supabase.from('alumnos').delete().eq('id', id);
-      if (error) {
-        alert('Error al eliminar: ' + error.message);
-      } else {
-        fetchData();
-      }
+  const handleDeleteAlumno = async () => {
+    if (!alumnoEliminar) return;
+    setIsDeleting(true);
+    const { error } = await supabase.from('alumnos').delete().eq('id', alumnoEliminar.id);
+    setIsDeleting(false);
+
+    if (error) {
+      alert('Error al eliminar: ' + error.message);
+      return;
     }
+
+    setAlumnoEliminar(null);
+    fetchData();
   };
 
   const exportToExcel = () => {
@@ -270,15 +279,17 @@ export default function AsistenciaTab() {
                         {alumno.nombre_completo}
                       </button>
                       <div className="flex flex-wrap gap-3 text-[8px] text-white/40 font-bold uppercase">
-                         <span
+                         <button
+                           type="button"
                            className="flex items-center gap-1 cursor-pointer hover:text-white"
                            onClick={() => {
-                              const newNombre = prompt('Nuevo nombre completo:', alumno.nombre_completo);
-                              if (newNombre) handleUpdateAlumno(alumno.id, { nombre_completo: newNombre });
+                              setNombreEditado(alumno.nombre_completo);
+                              setAlumnoRenombrar(alumno);
                            }}
+                           aria-label={`Editar nombre de ${alumno.nombre_completo}`}
                          >
                            <ShieldCheck size={10} /> {alumno.tipo_documento?.replace('_', ' ') || '---'}
-                         </span>
+                         </button>
                          <span className="flex items-center gap-1"><Fingerprint size={10} /> {alumno.numero_documento || '---'}</span>
                          <span className="flex items-center gap-1"><Phone size={10} /> {alumno.telefono || '---'}</span>
                       </div>
@@ -289,8 +300,9 @@ export default function AsistenciaTab() {
                 </td>
                 <td className="p-3 border-r border-white/20 text-center">
                   <button
-                    onClick={() => handleDeleteAlumno(alumno.id, alumno.nombre_completo)}
+                    onClick={() => setAlumnoEliminar(alumno)}
                     className="text-white/20 hover:text-hot-pink transition-colors"
+                    aria-label={`Eliminar a ${alumno.nombre_completo}`}
                   >
                     <Trash2 size={14} />
                   </button>
@@ -382,6 +394,31 @@ export default function AsistenciaTab() {
       )}
 
       {/* Add Alumno Modal */}
+      {alumnoEliminar && (
+        <ConfirmDialog
+          title="Eliminar alumno"
+          description={`¿Estás seguro de que deseas eliminar a ${alumnoEliminar.nombre_completo}? Esta acción no se puede deshacer.`}
+          onCancel={() => setAlumnoEliminar(null)}
+          onConfirm={handleDeleteAlumno}
+          busy={isDeleting}
+        />
+      )}
+
+      {alumnoRenombrar && (
+        <NameDialog
+          title="Editar nombre"
+          value={nombreEditado}
+          onChange={setNombreEditado}
+          onCancel={() => setAlumnoRenombrar(null)}
+          onConfirm={() => {
+            const nombre = nombreEditado.trim();
+            if (!nombre) return;
+            handleUpdateAlumno(alumnoRenombrar.id, { nombre_completo: nombre });
+            setAlumnoRenombrar(null);
+          }}
+        />
+      )}
+
       {showAddModal && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-6 bg-black/80 backdrop-blur-sm">
           <div className="bg-[#131313] border-4 border-white p-8 max-w-md w-full shadow-brutal-lg">
@@ -432,3 +469,4 @@ export default function AsistenciaTab() {
     </div>
   );
 }
+
