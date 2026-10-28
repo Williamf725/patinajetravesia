@@ -37,10 +37,19 @@ type AlumnoConInscripcion = Alumno & {
     inscripciones?: (Inscripcion & { plan: Plan | null })[];
 };
 
+type RegistroQR = {
+  id: string;
+  alumno_id: string;
+  fecha: string;
+  dia_clase: string | null;
+  created_at: string;
+};
+
 export default function AsistenciaTab() {
   const [loading, setLoading] = useState(true);
   const [alumnos, setAlumnos] = useState<AlumnoConInscripcion[]>([]);
   const [asistencia, setAsistencia] = useState<Asistencia[]>([]);
+  const [registrosQR, setRegistrosQR] = useState<RegistroQR[]>([]);
   const [mes, setMes] = useState(new Date());
   const [filtroDia, setFiltroDia] = useState('Todos');
   const [showAddModal, setShowAddModal] = useState(false);
@@ -61,13 +70,22 @@ export default function AsistenciaTab() {
         .select('*, inscripciones(*, plan:planes(*))')
         .order('numero_alumno');
 
-    const { data: asistenciaData } = await supabase.from('asistencia')
-      .select('*')
-      .gte('fecha', format(startOfMonth(mes), 'yyyy-MM-dd'))
-      .lte('fecha', format(endOfMonth(mes), 'yyyy-MM-dd'));
+    const inicioMes = format(startOfMonth(mes), 'yyyy-MM-dd');
+    const finMes = format(endOfMonth(mes), 'yyyy-MM-dd');
+    const [{ data: asistenciaData }, { data: registrosQRData }] = await Promise.all([
+      supabase.from('asistencia')
+        .select('*')
+        .gte('fecha', inicioMes)
+        .lte('fecha', finMes),
+      supabase.from('asistencia_qr')
+        .select('id, alumno_id, fecha, dia_clase, created_at')
+        .gte('fecha', inicioMes)
+        .lte('fecha', finMes),
+    ]);
 
     setAlumnos((alumnosData as AlumnoConInscripcion[]) || []);
     setAsistencia((asistenciaData as Asistencia[]) || []);
+    setRegistrosQR((registrosQRData as RegistroQR[]) || []);
     setLoading(false);
   }, [mes, supabase]);
 
@@ -253,14 +271,27 @@ export default function AsistenciaTab() {
               <th className="p-3 text-left border-r border-white/20 min-w-[200px] sticky left-12 bg-black z-30">ESTUDIANTE / IDENTIDAD</th>
               <th className="p-3 text-center border-r border-white/20 w-16">PERFIL</th>
               <th className="p-3 text-center border-r border-white/20 w-12">ELIM</th>
-              {fechasMes.map((fecha, i) => (
-                <th key={i} className="p-2 text-center border-r border-white/20 min-w-[60px]">
-                  <span className="text-[8px] text-white/40 block">
-                    {DAY_INDICES[getDay(fecha)]?.substring(0,3)}
-                  </span>
-                  {format(fecha, 'dd/MM')}
-                </th>
-              ))}
+              {fechasMes.map((fecha, i) => {
+                const fechaStr = format(fecha, 'yyyy-MM-dd');
+                const totalQR = registrosQR.filter(registro => registro.fecha === fechaStr).length;
+                const claseConfirmada = totalQR >= 4;
+                return (
+                  <th key={i} className="p-2 text-center border-r border-white/20 min-w-[82px]">
+                    <span className="text-[8px] text-white/40 block">
+                      {DAY_INDICES[getDay(fecha)]?.substring(0,3)}
+                    </span>
+                    {format(fecha, 'dd/MM')}
+                    {totalQR > 0 && (
+                      <span
+                        className={`block mt-1 text-[8px] ${claseConfirmada ? 'text-neon-green' : 'text-yellow-400'}`}
+                        title={claseConfirmada ? 'Clase confirmada con 4 o más registros QR' : 'Clase pendiente: faltan registros para llegar a 4'}
+                      >
+                        QR {totalQR}/4 {claseConfirmada ? '✓' : ''}
+                      </span>
+                    )}
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody>
@@ -310,13 +341,23 @@ export default function AsistenciaTab() {
                 {fechasMes.map((fecha, i) => {
                   const fechaStr = format(fecha, 'yyyy-MM-dd');
                   const isPresent = asistencia.find(a => a.alumno_id === alumno.id && a.fecha === fechaStr)?.presente;
+                  const pendienteQR = !isPresent && registrosQR.some(registro =>
+                    registro.alumno_id === alumno.id && registro.fecha === fechaStr
+                  );
                   return (
                     <td key={i} className="p-0 border-r border-white/20">
                       <button
                         onClick={() => toggleAsistencia(alumno.id, fecha)}
-                        className={`w-full h-12 flex items-center justify-center transition-colors ${isPresent ? 'bg-neon-green/20 text-neon-green font-black text-lg' : 'hover:bg-white/10 text-white/5'}`}
+                        title={isPresent ? 'Asistencia confirmada' : pendienteQR ? 'Registro QR pendiente de confirmar la clase' : 'Sin asistencia'}
+                        className={`w-full h-12 flex items-center justify-center transition-colors ${
+                          isPresent
+                            ? 'bg-neon-green/20 text-neon-green font-black text-lg'
+                            : pendienteQR
+                              ? 'bg-yellow-400/15 text-yellow-400 font-black text-lg'
+                              : 'hover:bg-white/10 text-white/5'
+                        }`}
                       >
-                        {isPresent ? '●' : '○'}
+                        {isPresent ? '●' : pendienteQR ? '◐' : '○'}
                       </button>
                     </td>
                   );
@@ -325,6 +366,13 @@ export default function AsistenciaTab() {
             ))}
           </tbody>
         </table>
+      </div>
+
+      <div className="flex flex-wrap gap-x-6 gap-y-2 font-mono text-[10px] uppercase text-white/50">
+        <span className="text-neon-green">● Asistencia confirmada</span>
+        <span className="text-yellow-400">◐ Registro QR pendiente</span>
+        <span>○ Sin registro</span>
+        <span>La clase se confirma automáticamente con 4 o más estudiantes.</span>
       </div>
 
       {/* Alumno Info Modal */}
@@ -469,4 +517,3 @@ export default function AsistenciaTab() {
     </div>
   );
 }
-
